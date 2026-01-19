@@ -23,7 +23,7 @@ type AppHeaderProps = {
 
 const navItems: NavItem[] = [
   { href: "/", label: "首页" },
-  { href: "/script", label: "脚本创作" },
+  { href: "/script", label: "剧本创作" },
   { href: "/video", label: "视频创作" },
   { href: "/library", label: "内容库" }
 ]
