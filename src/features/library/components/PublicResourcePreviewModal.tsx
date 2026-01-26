@@ -19,6 +19,11 @@ export function PublicResourcePreviewModal({ open, item, onClose }: PublicResour
   const subtitle = item.subtitle ?? ""
   const kind = (() => {
     if (!url) return "none"
+    if (item.scope === "public") {
+      if (item.publicCategory === "videos") return "video"
+      if (item.publicCategory === "audios") return "audio"
+      return "image"
+    }
     if (url.startsWith("data:image/")) return "image"
     const noHash = url.split("#")[0] ?? url
     const noQuery = noHash.split("?")[0] ?? noHash
@@ -30,6 +35,7 @@ export function PublicResourcePreviewModal({ open, item, onClose }: PublicResour
     if (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".m4a") || lower.endsWith(".aac") || lower.endsWith(".ogg")) return "audio"
     return "unknown"
   })()
+  const isStablePublicResourceUrl = Boolean(url?.startsWith("/api/library/public-resources/file/"))
 
   return (
     <>
@@ -45,9 +51,16 @@ export function PublicResourcePreviewModal({ open, item, onClose }: PublicResour
         <div className={styles.body}>
           <div className={styles.imagePanel}>
             {url && kind === "image" ? (
-              <Image src={url} alt={item.title} fill sizes="(max-width: 900px) 100vw, 900px" className={styles.image} />
+              <Image
+                src={url}
+                alt={item.title}
+                fill
+                sizes="(max-width: 900px) 100vw, 900px"
+                className={styles.image}
+                unoptimized={isStablePublicResourceUrl}
+              />
             ) : url && kind === "video" ? (
-              <video src={url} className={styles.image} controls />
+              <video src={url} className={styles.image} controls playsInline />
             ) : url && kind === "audio" ? (
               <audio src={url} className={styles.audio} controls />
             ) : null}

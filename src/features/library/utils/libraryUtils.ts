@@ -52,6 +52,9 @@ export function mapPublicTypeToCategory(type: string): string {
 }
 
 export function mapPublicResourceToItem(resource: PublicResource): LibraryItem {
+  const stablePreviewUrl = resource.previewStorageKey ? `/api/library/public-resources/file/${resource.id}?kind=preview` : undefined
+  const stableOriginalUrl = resource.originalStorageKey ? `/api/library/public-resources/file/${resource.id}?kind=original` : undefined
+
   return {
     id: resource.id,
     title: resource.name,
@@ -59,8 +62,8 @@ export function mapPublicResourceToItem(resource: PublicResource): LibraryItem {
     scope: "public",
     publicCategory: mapPublicTypeToCategory(resource.type),
     subtitle: resource.description,
-    thumbnail: resource.previewUrl || resource.originalUrl || undefined,
-    originalUrl: resource.originalUrl || resource.previewUrl || undefined
+    thumbnail: stablePreviewUrl || resource.previewUrl || stableOriginalUrl || resource.originalUrl || undefined,
+    originalUrl: stableOriginalUrl || resource.originalUrl || stablePreviewUrl || resource.previewUrl || undefined
   }
 }
 

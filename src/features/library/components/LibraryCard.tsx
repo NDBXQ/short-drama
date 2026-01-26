@@ -35,6 +35,11 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
   const previewUrl = item.thumbnail
   const previewKind = (() => {
     if (!previewUrl) return "none"
+    if (variant === "public") {
+      if (item.publicCategory === "videos") return "video"
+      if (item.publicCategory === "audios") return "audio"
+      return "image"
+    }
     if (previewUrl.startsWith("data:image/")) return "image"
     const noHash = previewUrl.split("#")[0] ?? previewUrl
     const noQuery = noHash.split("?")[0] ?? noHash
@@ -46,6 +51,8 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
     if (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".m4a") || lower.endsWith(".aac") || lower.endsWith(".ogg")) return "audio"
     return "unknown"
   })()
+
+  const isStablePublicResourceUrl = Boolean(previewUrl?.startsWith("/api/library/public-resources/file/"))
   
   const TypeIcon = {
     draft: Pencil,
@@ -86,7 +93,14 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
     >
       <div className={styles.preview}>
         {previewUrl && previewKind === "image" ? (
-          <Image src={previewUrl} alt={item.title} className={styles.previewImage} fill sizes={isList ? "160px" : "320px"} />
+          <Image
+            src={previewUrl}
+            alt={item.title}
+            className={styles.previewImage}
+            fill
+            sizes={isList ? "160px" : "320px"}
+            unoptimized={isStablePublicResourceUrl}
+          />
         ) : previewUrl && previewKind === "video" ? (
           <div className={styles.placeholder}>
             <Film size={isList ? 24 : 32} strokeWidth={1.5} />

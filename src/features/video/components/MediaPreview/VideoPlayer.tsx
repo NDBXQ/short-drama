@@ -252,9 +252,16 @@ export function VideoPlayer({
               ref={videoRef}
               key={currentItem?.key ?? "preview"}
               src={currentItem?.videoSrc ?? ""}
-              controls
               playsInline
               className={styles.previewVideo}
+              onClick={(e) => {
+                const el = e.currentTarget
+                if (el.paused) {
+                  playWithSoundFallback(el)
+                } else {
+                  el.pause()
+                }
+              }}
               onLoadedMetadata={(e) => {
                 const el = e.currentTarget
                 const w = el.videoWidth
@@ -290,9 +297,16 @@ export function VideoPlayer({
             <video
               ref={videoRef}
               src={activeImageSrc}
-              controls
               playsInline
               className={styles.previewVideo}
+              onClick={(e) => {
+                const el = e.currentTarget
+                if (el.paused) {
+                  playWithSoundFallback(el)
+                } else {
+                  el.pause()
+                }
+              }}
               onLoadedMetadata={(e) => {
                 const el = e.currentTarget
                 const w = el.videoWidth

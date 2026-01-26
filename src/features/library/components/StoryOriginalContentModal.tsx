@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactElement } from "react"
+import { useEffect, useState, type ReactElement } from "react"
 import { X } from "lucide-react"
 import styles from "./StoryOriginalContentModal.module.css"
 import { getStoryOriginalContent } from "../actions/library"
@@ -11,49 +11,41 @@ interface StoryOriginalContentModalProps {
   onClose: () => void
 }
 
-type StoryOriginalData = { title: string; intro?: string; originalText: string }
-
-export function StoryOriginalContentModal({
-  open,
-  storyId,
-  onClose
-}: StoryOriginalContentModalProps): ReactElement | null {
-  const [result, setResult] = useState<{ storyId: string; data: StoryOriginalData } | null>(null)
-  const [error, setError] = useState<{ storyId: string; message: string } | null>(null)
+export function StoryOriginalContentModal({ open, storyId, onClose }: StoryOriginalContentModalProps): ReactElement | null {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<{ title: string; intro?: string; originalText: string } | null>(null)
 
   useEffect(() => {
     if (!open || !storyId) return
     let cancelled = false
-
+    queueMicrotask(() => {
+      if (cancelled) return
+      setLoading(true)
+      setError(null)
+      setData(null)
+    })
     getStoryOriginalContent(storyId)
       .then((res) => {
         if (cancelled) return
         if (!res.success || !res.data) {
-          setError({ storyId, message: res.message || "加载失败" })
+          setError(res.message || "加载失败")
           return
         }
-        setResult({
-          storyId,
-          data: { title: res.data.title, intro: res.data.intro, originalText: res.data.originalText }
-        })
-        setError(null)
+        setData({ title: res.data.title, intro: res.data.intro, originalText: res.data.originalText })
       })
       .catch((e) => {
         if (cancelled) return
-        setError({ storyId, message: e instanceof Error ? e.message : "加载失败" })
+        setError(e instanceof Error ? e.message : "加载失败")
       })
-
+      .finally(() => {
+        if (cancelled) return
+        setLoading(false)
+      })
     return () => {
       cancelled = true
     }
   }, [open, storyId])
-
-  const view = useMemo(() => {
-    const data = storyId && result?.storyId === storyId ? result.data : null
-    const errorText = storyId && error?.storyId === storyId ? error.message : null
-    const loading = Boolean(open && storyId && !data && !errorText)
-    return { data, errorText, loading }
-  }, [error, open, result, storyId])
 
   if (!open || !storyId) return null
 
@@ -62,28 +54,28 @@ export function StoryOriginalContentModal({
       <div className={styles.overlay} onClick={onClose} />
       <div className={styles.modal}>
         <div className={styles.header}>
-          <div className={styles.title}>{view.data?.title ?? "查看原始内容"}</div>
+          <div className={styles.title}>{data?.title ?? "查看原始内容"}</div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭">
             <X size={18} />
           </button>
         </div>
 
         <div className={styles.body}>
-          {view.loading ? (
+          {loading ? (
             <div className={styles.muted}>加载中...</div>
-          ) : view.errorText ? (
-            <div className={styles.muted}>{view.errorText}</div>
-          ) : view.data ? (
+          ) : error ? (
+            <div className={styles.muted}>{error}</div>
+          ) : data ? (
             <>
-              {view.data.intro ? (
+              {data.intro ? (
                 <div className={styles.section}>
                   <div className={styles.sectionHeader}>简介</div>
-                  <div className={styles.sectionBody}>{view.data.intro}</div>
+                  <div className={styles.sectionBody}>{data.intro}</div>
                 </div>
               ) : null}
               <div className={styles.section}>
                 <div className={styles.sectionHeader}>原文内容</div>
-                <div className={styles.sectionBody}>{view.data.originalText || "（空）"}</div>
+                <div className={styles.sectionBody}>{data.originalText || "（空）"}</div>
               </div>
             </>
           ) : null}
@@ -98,4 +90,3 @@ export function StoryOriginalContentModal({
     </>
   )
 }
-

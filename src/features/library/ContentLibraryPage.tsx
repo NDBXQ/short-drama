@@ -14,7 +14,6 @@ import { PublicResourcePreviewModal } from "./components/PublicResourcePreviewMo
 import { StoryOriginalContentModal } from "./components/StoryOriginalContentModal"
 import { ConfirmModal } from "./components/ConfirmModal"
 import { deleteStory } from "./actions/library"
-import { uploadPublicResource } from "./actions/upload"
 import { aiGeneratePublicResource } from "./actions/ai-generate"
 import type { LibraryItem } from "./components/LibraryCard"
 import styles from "./ContentLibraryPage.module.css"
@@ -185,8 +184,9 @@ export function ContentLibraryPage(): ReactElement {
         open={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         onUpload={async (formData) => {
-          const res = await uploadPublicResource(formData)
-          if (!res.success) throw new Error(res.message)
+          const resp = await fetch("/api/library/public-resources/upload", { method: "POST", body: formData })
+          const json = (await resp.json().catch(() => null)) as any
+          if (!resp.ok || !json?.ok) throw new Error(json?.error?.message ?? `上传失败（${resp.status}）`)
           if (scope === "my") {
             await loadMyStories(query)
             return

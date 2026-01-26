@@ -47,8 +47,12 @@ export async function uploadPublicFile(
     contentType: file.type || "application/octet-stream"
   })
 
-  // 生成公开可访问的 URL（长期有效，不依赖预签名）
-  const url = new URL(`/${bucketName}/${uploadedKey}`, endpointUrl).toString()
+  let url = ""
+  try {
+    url = await storage.generatePresignedUrl({ key: uploadedKey, expireTime: 60 * 60 * 24 * 7 })
+  } catch {
+    url = new URL(`/${bucketName}/${uploadedKey}`, endpointUrl).toString()
+  }
 
   return { url, key: uploadedKey }
 }
@@ -76,6 +80,11 @@ export async function uploadPublicBuffer(input: {
     contentType: input.contentType
   })
 
-  const url = new URL(`/${bucketName}/${uploadedKey}`, endpointUrl).toString()
+  let url = ""
+  try {
+    url = await storage.generatePresignedUrl({ key: uploadedKey, expireTime: 60 * 60 * 24 * 7 })
+  } catch {
+    url = new URL(`/${bucketName}/${uploadedKey}`, endpointUrl).toString()
+  }
   return { url, key: uploadedKey }
 }
