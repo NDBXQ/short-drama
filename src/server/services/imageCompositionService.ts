@@ -21,19 +21,36 @@ export interface ComposeImageResult {
 }
 
 export class ImageCompositionService {
-  /**
-   * 合成图片
-   * @param {string} userId - 用户ID
-   * @param {string} storyboardId - 分镜ID
-   * @param {string} traceId - 链路ID
-   * @returns {Promise<ComposeImageResult>} 合成结果
-   */
   static async composeImage(
     userId: string,
     storyboardId: string,
     traceId: string,
     referenceImages?: Array<{ name: string; url: string }>
   ): Promise<ComposeImageResult> {
+    const result = await ImageCompositionService.composeInternal({ userId, storyboardId, traceId, mode: "both", referenceImages })
+    if (!result.image) throw new ServiceError("COMPOSE_FAILED", "图片合成失败")
+    return { storyId: result.storyId, storyboardId: result.storyboardId, image: result.image, ...(result.lastImage ? { lastImage: result.lastImage } : {}) }
+  }
+
+  static async composeTailImage(
+    userId: string,
+    storyboardId: string,
+    traceId: string,
+    referenceImages?: Array<{ name: string; url: string }>
+  ): Promise<{ storyId: string; storyboardId: string; lastImage: { name: string; url: string; thumbnailUrl: string } }> {
+    const result = await ImageCompositionService.composeInternal({ userId, storyboardId, traceId, mode: "tailOnly", referenceImages })
+    if (!result.lastImage) throw new ServiceError("COMPOSE_FAILED", "尾帧图片合成失败")
+    return { storyId: result.storyId, storyboardId: result.storyboardId, lastImage: result.lastImage }
+  }
+
+  private static async composeInternal(params: {
+    userId: string
+    storyboardId: string
+    traceId: string
+    mode: "both" | "tailOnly"
+    referenceImages?: Array<{ name: string; url: string }>
+  }): Promise<{ storyId: string; storyboardId: string; image?: { name: string; url: string; thumbnailUrl: string }; lastImage?: { name: string; url: string; thumbnailUrl: string } }> {
+    const { userId, storyboardId, traceId, mode, referenceImages } = params
     const start = Date.now()
     const db = await getDb({ generatedImages, stories, storyOutlines, storyboards })
 
@@ -60,31 +77,29 @@ export class ImageCompositionService {
     const lastPrompt = (allowed[0].storyboardFrames?.last?.prompt ?? "").trim()
     const scriptContent = allowed[0].storyboardScriptContent
 
-    if (!prompt) {
-      throw new ServiceError("PROMPT_NOT_FOUND", "该分镜缺少首帧提示词")
-    }
+    if (mode === "both" && !prompt) throw new ServiceError("PROMPT_NOT_FOUND", "该分镜缺少首帧提示词")
+    if (mode === "tailOnly" && !lastPrompt) throw new ServiceError("PROMPT_NOT_FOUND", "该分镜缺少尾帧提示词")
 
     const url = readEnv("COZE_IMAGE_COMPOSE_API_URL")
     const token = readEnv("COZE_IMAGE_COMPOSE_API_TOKEN")
     if (!url || !token) {
-      throw new ServiceError(
-        "COZE_NOT_CONFIGURED",
-        "Coze 未配置，请设置 COZE_IMAGE_COMPOSE_API_URL 与 COZE_IMAGE_COMPOSE_API_TOKEN"
-      )
+      throw new ServiceError("COZE_NOT_CONFIGURED", "Coze 未配置，请设置 COZE_IMAGE_COMPOSE_API_URL 与 COZE_IMAGE_COMPOSE_API_TOKEN")
     }
 
     logger.info({
-      event: "video_creation_images_compose_start",
+      event: mode === "tailOnly" ? "video_creation_images_compose_tail_start" : "video_creation_images_compose_start",
       module: "video",
       traceId,
-      message: "开始合成图片",
+      message: mode === "tailOnly" ? "开始合成尾帧图片" : "开始合成图片",
       storyId: effectiveStoryId,
       storyboardId
     })
 
     const requiredPrompts = extractReferenceImagePrompts(scriptContent)
+    const baseName = `合成图片_${storyboardId}`
+    const tailName = `${baseName}_tail`
+    const excludedNames = new Set<string>([baseName, tailName])
 
-    const composedName = `合成图片_${storyboardId}`
     const candidates =
       referenceImages && referenceImages.length > 0
         ? referenceImages
@@ -104,17 +119,12 @@ export class ImageCompositionService {
             .limit(500)
 
     const latestByKey = new Map<string, { name: string; category: string; url: string }>()
-    for (const row of candidates) {
-      if (!row.url) continue
-      if (row.name === composedName) continue
-      const key = `${row.category}::${row.name}`
-      if (!latestByKey.has(key)) latestByKey.set(key, { name: row.name, category: row.category, url: row.url })
-    }
-
     const latestByName = new Map<string, { name: string; category: string; url: string }>()
     for (const row of candidates) {
       if (!row.url) continue
-      if (row.name === composedName) continue
+      if (excludedNames.has(row.name)) continue
+      const key = `${row.category}::${row.name}`
+      if (!latestByKey.has(key)) latestByKey.set(key, { name: row.name, category: row.category, url: row.url })
       if (!latestByName.has(row.name)) latestByName.set(row.name, { name: row.name, category: row.category, url: row.url })
     }
 
@@ -138,14 +148,15 @@ export class ImageCompositionService {
       throw new ServiceError("NO_REFERENCE_IMAGES", "该分镜缺少可用于合成的参考图")
     }
 
+    const promptList = mode === "tailOnly" ? [lastPrompt] : (lastPrompt ? [prompt, lastPrompt] : [prompt])
+
     let cozeData: unknown
     try {
-      const prompts = lastPrompt ? [prompt, lastPrompt] : [prompt]
       const coze = await callCozeRunEndpoint({
         traceId,
         url,
         token,
-        body: { image_list: imageList, prompt: prompts, aspect_ratio: aspectRatio },
+        body: { image_list: imageList, prompt: promptList, aspect_ratio: aspectRatio },
         module: "video"
       })
       cozeData = coze.data
@@ -155,10 +166,10 @@ export class ImageCompositionService {
       }
       const anyErr = err as { name?: string; message?: string; stack?: string }
       logger.error({
-        event: "video_creation_images_compose_error",
+        event: mode === "tailOnly" ? "video_creation_images_compose_tail_error" : "video_creation_images_compose_error",
         module: "video",
         traceId,
-        message: "图片合成异常",
+        message: mode === "tailOnly" ? "尾帧图片合成异常" : "图片合成异常",
         errorName: anyErr?.name,
         errorMessage: anyErr?.message,
         stack: anyErr?.stack
@@ -167,39 +178,43 @@ export class ImageCompositionService {
     }
 
     const urls = ImageCompositionService.extractComposedImageUrls(cozeData)
-    const cozeImageUrl = urls[0] ?? null
-    const cozeLastImageUrl = lastPrompt ? (urls[1] ?? null) : null
-    if (!cozeImageUrl) throw new ServiceError("COZE_NO_IMAGE_URL", "合成结果缺少可用图片 URL")
-    if (lastPrompt && !cozeLastImageUrl) throw new ServiceError("COZE_NO_IMAGE_URL", "尾帧合成结果缺少可用图片 URL")
+    const cozeFirstUrl = urls[0] ?? null
+    const cozeSecondUrl = urls[1] ?? null
 
-    const imageBuffer = await downloadImage(cozeImageUrl, traceId)
-    const thumbnailBuffer = await generateThumbnail(imageBuffer, 300, traceId)
-    const lastImageBuffer = cozeLastImageUrl ? await downloadImage(cozeLastImageUrl, traceId) : null
-    const lastThumbnailBuffer = lastImageBuffer ? await generateThumbnail(lastImageBuffer, 300, traceId) : null
+    if (!cozeFirstUrl) throw new ServiceError("COZE_NO_IMAGE_URL", mode === "tailOnly" ? "尾帧合成结果缺少可用图片 URL" : "合成结果缺少可用图片 URL")
+    if (mode === "both" && lastPrompt && !cozeSecondUrl) throw new ServiceError("COZE_NO_IMAGE_URL", "尾帧合成结果缺少可用图片 URL")
 
     const storage = createCozeS3Storage()
     const timestamp = Date.now()
-    const safeName = makeSafeObjectKeySegment(composedName, 64)
-    const originalKey = `composed_${effectiveStoryId}_${storyboardId}_${safeName}_${timestamp}_original.jpg`
-    const thumbnailKey = `composed_${effectiveStoryId}_${storyboardId}_${safeName}_${timestamp}_thumbnail.jpg`
-    const lastSafeName = makeSafeObjectKeySegment(`${composedName}_tail`, 64)
-    const lastOriginalKey = `composed_${effectiveStoryId}_${storyboardId}_${lastSafeName}_${timestamp}_last_original.jpg`
-    const lastThumbnailKey = `composed_${effectiveStoryId}_${storyboardId}_${lastSafeName}_${timestamp}_last_thumbnail.jpg`
 
-    const uploadedOriginalKey = await storage.uploadFile({ fileContent: imageBuffer, fileName: originalKey, contentType: "image/jpeg" })
-    const uploadedThumbnailKey = await storage.uploadFile({ fileContent: thumbnailBuffer, fileName: thumbnailKey, contentType: "image/jpeg" })
-    const uploadedLastOriginalKey = lastImageBuffer ? await storage.uploadFile({ fileContent: lastImageBuffer, fileName: lastOriginalKey, contentType: "image/jpeg" }) : null
-    const uploadedLastThumbnailKey = lastThumbnailBuffer ? await storage.uploadFile({ fileContent: lastThumbnailBuffer, fileName: lastThumbnailKey, contentType: "image/jpeg" }) : null
+    const uploadOne = async (name: string, imageUrl: string, keySuffix: string) => {
+      const imageBuffer = await downloadImage(imageUrl, traceId)
+      const thumbnailBuffer = await generateThumbnail(imageBuffer, 300, traceId)
+      const safeName = makeSafeObjectKeySegment(name, 64)
+      const originalKey = `composed_${effectiveStoryId}_${storyboardId}_${safeName}_${timestamp}_${keySuffix}_original.jpg`
+      const thumbnailKey = `composed_${effectiveStoryId}_${storyboardId}_${safeName}_${timestamp}_${keySuffix}_thumbnail.jpg`
+      const uploadedOriginalKey = await storage.uploadFile({ fileContent: imageBuffer, fileName: originalKey, contentType: "image/jpeg" })
+      const uploadedThumbnailKey = await storage.uploadFile({ fileContent: thumbnailBuffer, fileName: thumbnailKey, contentType: "image/jpeg" })
+      const originalSignedUrl = await storage.generatePresignedUrl({ key: uploadedOriginalKey, expireTime: 604800 })
+      const thumbnailSignedUrl = await storage.generatePresignedUrl({ key: uploadedThumbnailKey, expireTime: 604800 })
+      return { name, url: originalSignedUrl, thumbnailUrl: thumbnailSignedUrl }
+    }
 
-    const originalSignedUrl = await storage.generatePresignedUrl({ key: uploadedOriginalKey, expireTime: 604800 })
-    const thumbnailSignedUrl = await storage.generatePresignedUrl({ key: uploadedThumbnailKey, expireTime: 604800 })
-    const lastOriginalSignedUrl = uploadedLastOriginalKey ? await storage.generatePresignedUrl({ key: uploadedLastOriginalKey, expireTime: 604800 }) : null
-    const lastThumbnailSignedUrl = uploadedLastThumbnailKey ? await storage.generatePresignedUrl({ key: uploadedLastThumbnailKey, expireTime: 604800 }) : null
+    const image = mode === "tailOnly" ? undefined : await uploadOne(baseName, cozeFirstUrl, "first")
+    const lastImage =
+      mode === "tailOnly"
+        ? await uploadOne(tailName, cozeFirstUrl, "last")
+        : lastPrompt && cozeSecondUrl
+          ? await uploadOne(tailName, cozeSecondUrl, "last")
+          : undefined
 
-    const nextFrames = mergeStoryboardFrames(allowed[0].storyboardFrames as any, {
-      first: { url: originalSignedUrl, thumbnailUrl: thumbnailSignedUrl },
-      ...(lastOriginalSignedUrl && lastThumbnailSignedUrl ? { last: { url: lastOriginalSignedUrl, thumbnailUrl: lastThumbnailSignedUrl } } : {})
-    })
+    const nextFrames =
+      mode === "tailOnly"
+        ? mergeStoryboardFrames(allowed[0].storyboardFrames as any, { last: { url: lastImage!.url, thumbnailUrl: lastImage!.thumbnailUrl } } as any)
+        : mergeStoryboardFrames(allowed[0].storyboardFrames as any, {
+            ...(image ? { first: { url: image.url, thumbnailUrl: image.thumbnailUrl } } : {}),
+            ...(lastImage ? { last: { url: lastImage.url, thumbnailUrl: lastImage.thumbnailUrl } } : {})
+          })
 
     await db
       .update(storyboards)
@@ -212,27 +227,16 @@ export class ImageCompositionService {
 
     const durationMs = Date.now() - start
     logger.info({
-      event: "video_creation_images_compose_success",
+      event: mode === "tailOnly" ? "video_creation_images_compose_tail_success" : "video_creation_images_compose_success",
       module: "video",
       traceId,
-      message: "合成图片完成",
+      message: mode === "tailOnly" ? "尾帧图片合成完成" : "合成图片完成",
       durationMs,
       storyId: effectiveStoryId,
       storyboardId
     })
 
-    return {
-      storyId: effectiveStoryId,
-      storyboardId,
-      image: {
-        name: composedName,
-        url: originalSignedUrl,
-        thumbnailUrl: thumbnailSignedUrl
-      },
-      ...(lastOriginalSignedUrl && lastThumbnailSignedUrl
-        ? { lastImage: { name: `${composedName}_tail`, url: lastOriginalSignedUrl, thumbnailUrl: lastThumbnailSignedUrl } }
-        : {})
-    }
+    return { storyId: effectiveStoryId, storyboardId, ...(image ? { image } : {}), ...(lastImage ? { lastImage } : {}) }
   }
 
   private static extractComposedImageUrl(data: unknown): string | null {

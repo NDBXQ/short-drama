@@ -1,14 +1,18 @@
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react"
+import { useCallback, useMemo, useState, type ReactElement } from "react"
 import styles from "./MediaPreviewPanel.module.css"
 import { VideoAssetSidebar } from "../VideoTimeline/VideoAssetSidebar"
 import { VideoPlayer } from "../MediaPreview/VideoPlayer"
 import { TimelineBar } from "../MediaPreview/TimelineBar"
+import { useResizableAssetSidebar } from "../../hooks/media-preview/useResizableAssetSidebar"
+import { useVideoEdit } from "../../hooks/media-preview/useVideoEdit"
 import { 
   calculatePreviewPlaylist, 
+  calculateTimelineAudioClips,
   calculateTimelineVideoClips, 
   normalizeDurationSeconds, 
   Thumbnail, 
+  TimelineAudioClip,
   TimelineSegment 
 } from "../../utils/mediaPreviewUtils"
 import type { VideoAssetGroup } from "../VideoTimeline/VideoAssetSidebar"
@@ -27,6 +31,8 @@ type Props = {
   timelineKey?: string
   initialTimeline?: { videoClips: any[]; audioClips: any[] } | null
   onTimelineChange?: (timeline: { videoClips: any[]; audioClips: any[] }) => void
+  storyboardId?: string | null
+  ttsAudioVersion?: number
 }
 
 export function MediaPreviewPanel({
@@ -42,71 +48,42 @@ export function MediaPreviewPanel({
   videoAssetGroups,
   timelineKey,
   initialTimeline,
-  onTimelineChange
+  onTimelineChange,
+  storyboardId,
+  ttsAudioVersion
 }: Props): ReactElement {
   const isVideoTab = mode === "video"
 
   const segments = useMemo(() => timelineSegments ?? [], [timelineSegments])
-
-  const sidebarKey = `ai-video:asset-sidebar-w:${timelineKey ?? "default"}`
-  const [assetSidebarWidth, setAssetSidebarWidth] = useState(280)
-  const [splitterActive, setSplitterActive] = useState(false)
-  const dragRef = useRef<{ startX: number; startW: number } | null>(null)
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    try {
-      const raw = window.localStorage.getItem(sidebarKey)
-      const n = Number(raw)
-      if (Number.isFinite(n) && n > 0) queueMicrotask(() => setAssetSidebarWidth(n))
-    } catch {}
-  }, [sidebarKey])
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    try {
-      window.localStorage.setItem(sidebarKey, String(assetSidebarWidth))
-    } catch {}
-  }, [assetSidebarWidth, sidebarKey])
-  
-  useEffect(() => {
-    if (!splitterActive) return
-    if (typeof window === "undefined") return
-
-    const onMove = (e: PointerEvent) => {
-      const snap = dragRef.current
-      if (!snap) return
-      const delta = snap.startX - e.clientX
-      const next = Math.max(176, Math.min(480, snap.startW + delta))
-      setAssetSidebarWidth(next)
+  const segmentFirstFrames = useMemo<Record<string, string>>(() => {
+    const out: Record<string, string> = {}
+    for (const t of thumbnails ?? []) {
+      const id = (t?.id ?? "").trim()
+      if (!id) continue
+      const src = (t as any)?.firstFrameSrc ?? (t as any)?.imageSrc
+      if (typeof src === "string" && src.trim()) out[id] = src.trim()
     }
-
-    const onUp = () => {
-      dragRef.current = null
-      setSplitterActive(false)
+    for (const g of videoAssetGroups ?? []) {
+      for (const s of g.segments ?? []) {
+        const id = String((s as any)?.id ?? "").trim()
+        if (!id) continue
+        const src = (s as any)?.firstFrameSrc
+        if (typeof src === "string" && src.trim()) out[id] = src.trim()
+      }
     }
-
-    window.addEventListener("pointermove", onMove)
-    window.addEventListener("pointerup", onUp)
-    window.addEventListener("pointercancel", onUp)
-
-    const prevCursor = document.body.style.cursor
-    document.body.style.cursor = "col-resize"
-
-    return () => {
-      window.removeEventListener("pointermove", onMove)
-      window.removeEventListener("pointerup", onUp)
-      window.removeEventListener("pointercancel", onUp)
-      document.body.style.cursor = prevCursor
-    }
-  }, [splitterActive])
+    return out
+  }, [thumbnails, videoAssetGroups])
+  const { assetSidebarWidth, setAssetSidebarWidth, splitterActive, startResize } = useResizableAssetSidebar({
+    timelineKey,
+    enabled: isVideoTab
+  })
 
   const [previewAllActive, setPreviewAllActive] = useState(false)
   const [previewAllIndex, setPreviewAllIndex] = useState(0)
   const [previewAllPlaying, setPreviewAllPlaying] = useState(false)
   const [previewAllLocalTime, setPreviewAllLocalTime] = useState(0)
-
   const timelineVideoClips = useMemo(() => calculateTimelineVideoClips(initialTimeline), [initialTimeline])
+  const timelineAudioClips = useMemo<TimelineAudioClip[]>(() => calculateTimelineAudioClips(initialTimeline), [initialTimeline])
   const activeTimelineVideoClip = useMemo(() => {
     if (!isVideoTab) return null
     const targetId = (activeId ?? "").trim()
@@ -117,6 +94,27 @@ export function MediaPreviewPanel({
     return sorted[0] ?? null
   }, [activeId, isVideoTab, timelineVideoClips])
 
+  const stopPreviewAll = useCallback(() => {
+    setPreviewAllPlaying(false)
+    setPreviewAllActive(false)
+    setPreviewAllIndex(0)
+    setPreviewAllLocalTime(0)
+  }, [])
+
+  const { editedVideoUrl, editingLoading, handleEdit, clearEditedVideo, displayTitleOverride } = useVideoEdit({
+    enabled: isVideoTab,
+    segments,
+    timelineVideoClips,
+    timelineAudioClips,
+    stopPreviewAll
+  })
+
+  const displayTitle = useMemo(() => {
+    if (displayTitleOverride) return displayTitleOverride
+    if (isVideoTab && activeTimelineVideoClip?.title) return activeTimelineVideoClip.title
+    return activeTitle
+  }, [activeTitle, activeTimelineVideoClip?.title, displayTitleOverride, isVideoTab])
+
   const previewPlaylist = useMemo(() => 
     calculatePreviewPlaylist(isVideoTab, previewAllActive, segments, timelineVideoClips),
     [isVideoTab, previewAllActive, segments, timelineVideoClips]
@@ -124,6 +122,14 @@ export function MediaPreviewPanel({
 
   const currentItem = previewAllActive ? previewPlaylist[previewAllIndex] : null
   const currentItemDurationSeconds = currentItem ? currentItem.playDurationSeconds : 0
+  const nextPreloadVideoSrc = useMemo(() => {
+    if (!previewAllActive) return ""
+    for (let i = previewAllIndex + 1; i < previewPlaylist.length; i += 1) {
+      const src = (previewPlaylist[i]?.videoSrc ?? "").trim()
+      if (src) return src
+    }
+    return ""
+  }, [previewAllActive, previewAllIndex, previewPlaylist])
 
   const prefixPlaylistSeconds = useMemo(() => {
     if (!previewAllActive) return 0
@@ -135,13 +141,6 @@ export function MediaPreviewPanel({
   const totalPlaylistSeconds = useMemo(() => previewPlaylist.reduce((sum, it) => sum + (it.playDurationSeconds ?? 0), 0), [previewPlaylist])
   const previewAllElapsedSeconds = previewAllActive ? prefixPlaylistSeconds + previewAllLocalTime : 0
   const previewAllPercent = previewAllActive && totalPlaylistSeconds > 0 ? Math.round((previewAllElapsedSeconds / totalPlaylistSeconds) * 100) : 0
-
-  const stopPreviewAll = useCallback(() => {
-    setPreviewAllPlaying(false)
-    setPreviewAllActive(false)
-    setPreviewAllIndex(0)
-    setPreviewAllLocalTime(0)
-  }, [])
 
   const seekPreviewAllSeconds = useCallback(
     (seconds: number) => {
@@ -181,16 +180,6 @@ export function MediaPreviewPanel({
     setPreviewAllPlaying(true)
   }, [])
 
-  const startResize = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!isVideoTab) return
-      setSplitterActive(true)
-      e.preventDefault()
-      dragRef.current = { startX: e.clientX, startW: assetSidebarWidth }
-    },
-    [assetSidebarWidth, isVideoTab]
-  )
-
   return (
     <main
       className={`${styles.main} ${isVideoTab ? styles.mainVideo : styles.mainImage}`}
@@ -201,17 +190,24 @@ export function MediaPreviewPanel({
         <div className={styles.previewCard}>
           <VideoPlayer
             mode={mode}
-            activeImageSrc={activeImageSrc}
+            activeImageSrc={editedVideoUrl ?? activeImageSrc}
             activeFrameImages={activeFrameImages}
-            activeTitle={activeTitle}
+            activeTitle={displayTitle}
             onOpenFrameImage={onOpenFrameImage}
             previewAllActive={previewAllActive}
             previewAllPlaying={previewAllPlaying}
             previewAllLocalTime={previewAllLocalTime}
+            previewAllElapsedSeconds={previewAllElapsedSeconds}
+            nextPreloadVideoSrc={nextPreloadVideoSrc}
             currentItem={currentItem}
             currentItemDurationSeconds={currentItemDurationSeconds}
             timelineVideoClips={timelineVideoClips}
+            timelineAudioClips={timelineAudioClips}
             activeVideoClip={activeTimelineVideoClip}
+            disableClipConstraint={Boolean(editedVideoUrl)}
+            onRequestVideoEdit={handleEdit}
+            onClearVideoEdit={editedVideoUrl ? clearEditedVideo : undefined}
+            videoEditLoading={editingLoading}
             onStopPreviewAll={stopPreviewAll}
             onTogglePreviewAllPlaying={() => setPreviewAllPlaying((v) => !v)}
             onAdvancePreviewAll={advancePreviewAll}
@@ -235,7 +231,13 @@ export function MediaPreviewPanel({
               }}
             />
             <div className={styles.assetSidebarWrap}>
-              <VideoAssetSidebar videoSegments={segments as any} videoGroups={videoAssetGroups} />
+              <VideoAssetSidebar
+                videoSegments={segments as any}
+                videoGroups={videoAssetGroups}
+                segmentFirstFrames={segmentFirstFrames}
+                storyboardId={storyboardId ?? null}
+                ttsAudioVersion={ttsAudioVersion ?? 0}
+              />
             </div>
           </>
         ) : null}
@@ -248,6 +250,7 @@ export function MediaPreviewPanel({
           thumbnails={thumbnails}
           onThumbnailClick={onThumbnailClick}
           timelineSegments={segments}
+          segmentFirstFrames={segmentFirstFrames}
           timelineKey={timelineKey}
           initialTimeline={initialTimeline}
           onTimelineChange={onTimelineChange}

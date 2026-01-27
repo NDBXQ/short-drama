@@ -35,6 +35,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const type = (parsed.data.type ?? "").trim()
 
   const whereParts: any[] = []
+  whereParts.push(sql`NOT (${publicResources.tags} @> ${JSON.stringify(["tts_sample"])}::jsonb)`)
   if (type) whereParts.push(eq(publicResources.type, type))
   if (keyword) {
     const likeValue = `%${keyword}%`
@@ -56,4 +57,3 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   return NextResponse.json(makeApiOk(traceId, { items }), { status: 200 })
 }
-

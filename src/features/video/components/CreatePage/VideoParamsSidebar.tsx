@@ -1,6 +1,7 @@
 import { type ReactElement } from "react"
 import styles from "./VideoParamsSidebar.module.css"
 import { clampInt } from "../../utils/previewUtils"
+import { TtsDialoguePanel } from "@/features/tts/components/TtsDialoguePanel"
 
 type DialogueRow = {
   id: string
@@ -21,6 +22,9 @@ type Props = {
   hasExistingVideo?: boolean
   onGenerate: () => void
   isGenerating?: boolean
+  storyboardId?: string | null
+  dialogues?: Array<{ id: string; roleName: string; content: string }>
+  onAudioGenerated?: () => void
 }
 
 export function VideoParamsSidebar({
@@ -30,7 +34,10 @@ export function VideoParamsSidebar({
   hasVoice, setHasVoice,
   hasExistingVideo,
   onGenerate,
-  isGenerating
+  isGenerating,
+  storyboardId,
+  dialogues,
+  onAudioGenerated
 }: Props): ReactElement {
   return (
     <aside className={styles.left} aria-label="生视频参数区">
@@ -103,7 +110,10 @@ export function VideoParamsSidebar({
             </button>
           </div>
         </div>
+
       </div>
+
+      {storyboardId ? <TtsDialoguePanel storyboardId={storyboardId} dialogues={dialogues ?? []} onAudioGenerated={onAudioGenerated} /> : null}
 
       <button type="button" className={styles.primaryBtn} onClick={onGenerate} disabled={Boolean(isGenerating)}>
         {isGenerating ? "生成中…" : hasExistingVideo ? "重新生成" : "生成视频"}

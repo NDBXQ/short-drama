@@ -3,7 +3,7 @@
 import { cookies } from "next/headers"
 import { getDb } from "coze-coding-dev-sdk"
 import { generatedImages, jobs, stories, storyOutlines, storyboards } from "@/shared/schema"
-import { desc, eq, and, inArray, like } from "drizzle-orm"
+import { desc, eq, and, inArray, like, sql } from "drizzle-orm"
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
 import { logger } from "@/shared/logger"
@@ -29,7 +29,7 @@ export async function getMyStories(query?: string): Promise<LibraryItem[]> {
   const session = await verifySessionToken(token, traceId)
   if (!session) return []
 
-  const db = await getDb({ stories })
+  const db = await getDb({ stories, storyOutlines, storyboards })
 
   const conditions = [eq(stories.userId, session.userId)]
   const normalizedQuery = query?.trim() ?? ""
@@ -51,7 +51,7 @@ export async function getMyStories(query?: string): Promise<LibraryItem[]> {
     .where(and(...conditions))
     .orderBy(desc(stories.updatedAt))
 
-  const items = rows.map((row) => {
+  const items: LibraryItem[] = rows.map((row) => {
     const metadata = (row.metadata ?? {}) as StoryMetadata
     const thumbnail = typeof metadata?.thumbnail === "string" ? metadata.thumbnail : undefined
 
@@ -80,6 +80,39 @@ export async function getMyStories(query?: string): Promise<LibraryItem[]> {
       progressStage: row.progressStage
     } satisfies LibraryItem
   })
+
+  const missingThumbnailStoryIds = items
+    .filter((i) => !i.thumbnail)
+    .map((i) => i.id)
+    .slice(0, 200)
+
+  if (missingThumbnailStoryIds.length > 0) {
+    const idsSql = sql.join(missingThumbnailStoryIds.map((id) => sql`${id}`), sql`,`)
+    const res = await db.execute(sql`
+      select distinct on (so.story_id)
+        so.story_id as story_id,
+        coalesce(sb.frames->'first'->>'thumbnailUrl', sb.frames->'first'->>'url') as thumbnail
+      from story_outlines so
+      join storyboards sb on sb.outline_id = so.id
+      where so.story_id in (${idsSql})
+      order by so.story_id, so.sequence asc, sb.sequence asc
+    `)
+    const firstFrameRows = ((res as unknown as { rows?: Array<{ story_id: string; thumbnail: string | null }> }).rows ?? (res as any)) as Array<{
+      story_id: string
+      thumbnail: string | null
+    }>
+    const thumbByStoryId = new Map<string, string>()
+    for (const r of firstFrameRows) {
+      const id = String((r as any).story_id ?? "").trim()
+      const t = typeof (r as any).thumbnail === "string" ? String((r as any).thumbnail).trim() : ""
+      if (id && t) thumbByStoryId.set(id, t)
+    }
+    for (const item of items) {
+      if (item.thumbnail) continue
+      const t = thumbByStoryId.get(item.id)
+      if (t) item.thumbnail = t
+    }
+  }
 
   logger.info({
     event: "library_my_stories_list_success",

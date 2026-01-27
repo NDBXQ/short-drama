@@ -47,7 +47,145 @@
   color: #475569;
   font-weight: 900;
   font-size: 12px;
-  cursor: default;
+  cursor: pointer;
+}
+
+.moreOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.38);
+  display: grid;
+  place-items: center;
+  z-index: 80;
+  padding: 18px;
+}
+
+.moreModal {
+  width: min(860px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.moreHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.moreTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.88);
+  min-width: 0;
+}
+
+.moreCloseBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+  color: rgba(15, 23, 42, 0.86);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.moreCloseBtn:hover {
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+.moreGrid {
+  padding: 12px 14px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 860px) {
+  .moreGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .moreGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.moreItem {
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(15, 23, 42, 0.02);
+  cursor: pointer;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  text-align: left;
+}
+
+.moreItem:hover {
+  background: rgba(79, 70, 229, 0.10);
+  border-color: rgba(79, 70, 229, 0.28);
+}
+
+.moreItemImg {
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.80);
+  display: block;
+}
+
+.moreItemName {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.82);
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moreFooter {
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.86);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.moreAddBtn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(109, 94, 247, 0.65);
+  background: #4f46e5;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.moreAddBtn:hover {
+  background: #4338ca;
 }
 
 .sceneNo {
@@ -109,182 +247,6 @@
   word-break: break-word;
 }
 
-.characterList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.characterChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(248, 250, 252, 0.95);
-}
-
-.avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.14);
-  display: inline-grid;
-  place-items: center;
-  font-weight: 900;
-  color: #0f172a;
-}
-
-.characterName {
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.chipRemove {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #fff;
-  color: #64748b;
-  cursor: pointer;
-  display: inline-grid;
-  place-items: center;
-}
-
-.chipRemoveDanger:hover {
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #ef4444;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  font-weight: 800;
-  font-size: 12px;
-  margin-right: 6px;
-}
-
-.tagBlue {
-  background: rgba(37, 99, 235, 0.10);
-  border-color: rgba(37, 99, 235, 0.18);
-  color: #1e40af;
-}
-
-.dialogueBox {
-  display: grid;
-  gap: 8px;
-}
-
-.dialogueItem {
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  background: rgba(248, 250, 252, 0.55);
-  border-radius: 12px;
-  padding: 8px 10px;
-  display: grid;
-  gap: 6px;
-}
-
-.dialogueHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0;
-}
-
-.dialogueRolePill {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 800;
-  color: #0f172a;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.10);
-  border: 1px solid rgba(37, 99, 235, 0.16);
-}
-
-.dialogueText {
-  color: #334155;
-  font-weight: 700;
-  font-size: 12px;
-  line-height: 1.55;
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.chipList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.backgroundStack {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.simpleChip {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 6px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  color: #334155;
-  font-weight: 800;
-  font-size: 11px;
-  max-width: 100%;
-}
-
-.sceneItemText {
-  background: rgba(2, 132, 199, 0.06);
-  border-color: rgba(2, 132, 199, 0.18);
-  color: #075985;
-}
-
-.metaChip {
-  color: #64748b;
-}
-
-.chipClickable {
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-}
-
-.chipClickable:hover {
-  background: rgba(37, 99, 235, 0.10);
-  border-color: rgba(37, 99, 235, 0.22);
-}
-
-.chipClickable:active {
-  transform: translateY(1px);
-}
-
-.addCharBtn {
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  border: 1px dashed rgba(37, 99, 235, 0.35);
-  background: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  font-weight: 900;
-  color: #2563eb;
-}
-
 .actionGroup {
   display: flex;
   gap: 6px;
@@ -318,10 +280,4 @@
 .deleteBtn:hover {
   border-color: rgba(239, 68, 68, 0.28);
   color: #b91c1c;
-}
-
-.shootInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }

@@ -9,8 +9,9 @@
   display: grid;
   grid-template-rows: auto 1fr;
   position: sticky;
-  top: 86px;
-  height: calc(100vh - 128px);
+  top: 0;
+  height: 100%;
+  min-height: 0;
 }
 
 .outlineNavHeader {

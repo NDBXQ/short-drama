@@ -3,6 +3,9 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
 .scopeWrap {
@@ -28,12 +31,18 @@
 .main {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
 .content {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .contentWrap {
@@ -44,17 +53,26 @@
   border: 1px solid rgba(15, 23, 42, 0.06);
   background: rgba(255, 255, 255, 0.92);
   padding: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .bodyRow {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
+  min-width: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .contentInner {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .contentHeader {
@@ -72,6 +90,9 @@
   background: rgba(248, 250, 252, 0.6);
   border: 1px solid rgba(15, 23, 42, 0.06);
   padding: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 @media (max-width: 860px) {

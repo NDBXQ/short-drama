@@ -1,0 +1,58 @@
+.previewDock {
+  position: sticky;
+  bottom: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.92);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.previewDockHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.previewDockTitle {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.previewDockClose {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.previewDockClose:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.previewDockAudio {
+  width: 100%;
+  height: 36px;
+}
+
+.previewDockVideo {
+  width: 100%;
+  height: 180px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+}
+

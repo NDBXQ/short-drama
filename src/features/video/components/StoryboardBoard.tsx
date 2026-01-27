@@ -1,4 +1,4 @@
-import { useMemo, type ReactElement } from "react"
+import { useCallback, useMemo, useState, type ReactElement } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import type { StoryboardItem } from "@/features/video/types"
@@ -7,6 +7,7 @@ import sidebarStyles from "./StoryboardList/StoryboardSidebar.module.css"
 import toolbarStyles from "./StoryboardList/StoryboardToolbar.module.css"
 import { useStoryboardData } from "../hooks/useStoryboardData"
 import { createLocalPreviewSvg } from "../utils/previewUtils"
+import { ConfirmModal } from "@/features/library/components/ConfirmModal"
 
 type StoryboardBoardProps = {
   initialItems?: StoryboardItem[]
@@ -76,9 +77,42 @@ export function StoryboardBoard({
     return episodes[0]?.id ?? ""
   }, [activeEpisode, episodes])
 
-  const handleDelete = (id: string) => {
-    setItems((prev) => prev.filter((it) => it.id !== id).map((it, i) => ({ ...it, scene_no: i + 1 })))
-  }
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; sceneNo: number } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const openDeleteConfirm = useCallback(
+    (id: string) => {
+      const hit = items.find((it) => it.id === id)
+      setDeleteTarget({ id, sceneNo: hit?.scene_no ?? 0 })
+    },
+    [items]
+  )
+
+  const deleteFromServer = useCallback(async (ids: string[]) => {
+    const res = await fetch("/api/video/storyboards", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storyboardIds: ids })
+    })
+    const json = (await res.json().catch(() => null)) as { ok: boolean; error?: { message?: string } } | null
+    if (!res.ok || !json?.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
+  }, [])
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteTarget || isDeleting) return
+    setIsDeleting(true)
+    try {
+      await deleteFromServer([deleteTarget.id])
+      if (reloadShots && safeActiveEpisode) await reloadShots(safeActiveEpisode)
+      else setItems((prev) => prev.filter((it) => it.id !== deleteTarget.id).map((it, i) => ({ ...it, scene_no: i + 1 })))
+      setDeleteTarget(null)
+    } catch (e) {
+      const anyErr = e as { message?: string }
+      alert(anyErr?.message ?? "删除失败")
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [deleteFromServer, deleteTarget, isDeleting, reloadShots, safeActiveEpisode, setItems])
 
   return (
     <section className={styles.board} aria-label="分镜故事板">
@@ -156,7 +190,7 @@ export function StoryboardBoard({
                             className={styles.iconBtn}
                             aria-label="删除镜头"
                             title="删除"
-                            onClick={() => handleDelete(it.id)}
+                            onClick={() => openDeleteConfirm(it.id)}
                           >
                             <IconTrash />
                           </button>
@@ -206,6 +240,20 @@ export function StoryboardBoard({
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="确认删除镜头？"
+        message={`将删除「镜 ${deleteTarget?.sceneNo ?? ""}」，删除后不可恢复。`}
+        confirmText="删除"
+        cancelText="取消"
+        confirming={isDeleting}
+        onCancel={() => {
+          if (isDeleting) return
+          setDeleteTarget(null)
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </section>
   )
 }

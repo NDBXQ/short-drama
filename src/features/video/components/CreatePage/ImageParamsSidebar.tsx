@@ -1,6 +1,8 @@
-import Image from "next/image"
-import { type ReactElement, type ReactNode, useState } from "react"
+import { type ReactElement, useState } from "react"
 import styles from "./ImageParamsSidebar.module.css"
+import { ChipWithThumb } from "./ImageParamsSidebarParts/ChipWithThumb"
+import { ChipGroup } from "./ImageParamsSidebarParts/ChipGroup"
+import { LastFrameModal } from "./ImageParamsSidebarParts/LastFrameModal"
 
 type PreviewImage = {
   id: string
@@ -29,7 +31,7 @@ type Props = {
   setRoles: (v: React.SetStateAction<string[]>) => void
   items: string[]
   setItems: (v: React.SetStateAction<string[]>) => void
-  onGenerate: () => void
+  onGenerate: (opts?: { mode?: "both" | "tailOnly" }) => void
   onPreviewImage?: (
     title: string,
     imageSrc: string,
@@ -57,55 +59,6 @@ function pickPreview(list: PreviewImage[], name: string): PreviewImage | null {
   return null
 }
 
-function ChipWithThumb({
-  label,
-  thumbUrl,
-  onPreview
-}: {
-  label: string
-  thumbUrl?: string | null
-  onPreview?: () => void
-}): ReactElement {
-  const displayLabel = label.length > 3 ? `${label.slice(0, 3)}...` : label
-  return (
-    <span
-      className={styles.chip}
-      onClick={onPreview}
-      onKeyDown={(e) => {
-        if (!onPreview) return
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onPreview()
-        }
-      }}
-      role={onPreview ? "button" : undefined}
-      tabIndex={onPreview ? 0 : undefined}
-    >
-      <span className={styles.chipThumb} aria-hidden="true">
-        {thumbUrl ? (
-          <Image className={styles.chipThumbImg} src={thumbUrl} alt="" width={22} height={22} unoptimized />
-        ) : (
-          <span className={styles.chipThumbFallback} />
-        )}
-      </span>
-      <span className={styles.chipText} title={label}>
-        {displayLabel}
-      </span>
-    </span>
-  )
-}
-
-function ChipGroup({ title, children }: { title: string; children: ReactNode }): ReactElement {
-  return (
-    <div className={styles.group}>
-      <div className={styles.groupHeader}>
-        <span>{title}</span>
-      </div>
-      <div className={styles.chipList}>{children}</div>
-    </div>
-  )
-}
-
 export function ImageParamsSidebar({
   prompt, setPrompt,
   tailPrompt, setTailPrompt,
@@ -128,6 +81,7 @@ export function ImageParamsSidebar({
   const [lastFrameModalOpen, setLastFrameModalOpen] = useState(false)
   const [shotCutError, setShotCutError] = useState<string | null>(null)
   const [usingLastFrame, setUsingLastFrame] = useState(false)
+  const [firstFrameLocked, setFirstFrameLocked] = useState(false)
 
   return (
     <aside className={styles.left} aria-label="生图参数区">
@@ -154,7 +108,23 @@ export function ImageParamsSidebar({
       </div>
       {shotCutError ? <div className={styles.shotCutError}>{shotCutError}</div> : null}
 
-      <div className={styles.promptStack} aria-label="首帧与尾帧提示词">
+      {firstFrameLocked ? (
+        <div className={styles.firstFrameLockedRow} aria-label="首帧已锁定">
+          <div className={styles.firstFrameLockedText}>首帧已使用上个分镜尾帧</div>
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            onClick={() => {
+              setFirstFrameLocked(false)
+              setActivePromptTab("first")
+            }}
+          >
+            恢复提示词
+          </button>
+        </div>
+      ) : null}
+
+      <div className={`${styles.promptStack} ${firstFrameLocked ? styles.promptStackSingle : ""}`} aria-label="首帧与尾帧提示词">
         <div
           className={`${styles.promptCard} ${activePromptTab === "last" ? styles.promptCardFront : styles.promptCardBack}`}
           role={activePromptTab === "last" ? undefined : "button"}
@@ -187,43 +157,45 @@ export function ImageParamsSidebar({
           )}
         </div>
 
-        <div
-          className={`${styles.promptCard} ${activePromptTab === "first" ? styles.promptCardFront : styles.promptCardBack}`}
-          role={activePromptTab === "first" ? undefined : "button"}
-          tabIndex={activePromptTab === "first" ? undefined : 0}
-          onClick={
-            activePromptTab === "first"
-              ? undefined
-              : () => {
-                  setActivePromptTab("first")
-                }
-          }
-          onKeyDown={
-            activePromptTab === "first"
-              ? undefined
-              : (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
+        {!firstFrameLocked ? (
+          <div
+            className={`${styles.promptCard} ${activePromptTab === "first" ? styles.promptCardFront : styles.promptCardBack}`}
+            role={activePromptTab === "first" ? undefined : "button"}
+            tabIndex={activePromptTab === "first" ? undefined : 0}
+            onClick={
+              activePromptTab === "first"
+                ? undefined
+                : () => {
                     setActivePromptTab("first")
                   }
-                }
-          }
-        >
-          <div className={styles.labelRow}>
-            <span>首帧提示词</span>
-            <span className={styles.counter}>{prompt.length}/1000</span>
+            }
+            onKeyDown={
+              activePromptTab === "first"
+                ? undefined
+                : (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setActivePromptTab("first")
+                    }
+                  }
+            }
+          >
+            <div className={styles.labelRow}>
+              <span>首帧提示词</span>
+              <span className={styles.counter}>{prompt.length}/1000</span>
+            </div>
+            {activePromptTab === "first" ? (
+              <textarea
+                className={styles.textarea}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value.slice(0, 1000))}
+                maxLength={1000}
+              />
+            ) : (
+              <div className={styles.promptPlaceholder} aria-hidden="true" />
+            )}
           </div>
-          {activePromptTab === "first" ? (
-            <textarea
-              className={styles.textarea}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value.slice(0, 1000))}
-              maxLength={1000}
-            />
-          ) : (
-            <div className={styles.promptPlaceholder} aria-hidden="true" />
-          )}
-        </div>
+        ) : null}
       </div>
 
       <ChipGroup title="背景">
@@ -238,9 +210,7 @@ export function ImageParamsSidebar({
               onPreviewImage?.(p.name, p.url, p.id, p.storyboardId ?? null, p.category ?? null, p.description, p.prompt)
             }}
           />
-        ) : (
-          <span className={styles.chip}>{sceneText}</span>
-        )}
+        ) : null}
       </ChipGroup>
 
       <ChipGroup title="出场角色">
@@ -249,8 +219,8 @@ export function ImageParamsSidebar({
           const p = pickPreview(rolePreviews, name)
           const thumbUrl = p?.thumbnailUrl ?? p?.url
           return (
-            <span key={`role-${name}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
             <ChipWithThumb
+              key={`role-${name}`}
               label={name}
               thumbUrl={thumbUrl}
               onPreview={() => {
@@ -258,7 +228,6 @@ export function ImageParamsSidebar({
                 onPreviewImage?.(name, p.url, p.id, p.storyboardId ?? null, p.category ?? null, p.description, p.prompt)
               }}
             />
-            </span>
           )
         })}
       </ChipGroup>
@@ -269,8 +238,8 @@ export function ImageParamsSidebar({
           const p = pickPreview(itemPreviews, name)
           const thumbUrl = p?.thumbnailUrl ?? p?.url
           return (
-            <span key={`item-${name}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
             <ChipWithThumb
+              key={`item-${name}`}
               label={name}
               thumbUrl={thumbUrl}
               onPreview={() => {
@@ -278,78 +247,49 @@ export function ImageParamsSidebar({
                 onPreviewImage?.(name, p.url, p.id, p.storyboardId ?? null, p.category ?? null, p.description, p.prompt)
               }}
             />
-            </span>
           )
         })}
       </ChipGroup>
 
-      <button type="button" className={styles.primaryBtn} onClick={onGenerate} disabled={Boolean(isGenerating)}>
-        {isGenerating ? "合成中…" : "生成图片"}
+      <button
+        type="button"
+        className={styles.primaryBtn}
+        onClick={() => {
+          onGenerate({ mode: firstFrameLocked ? "tailOnly" : "both" })
+        }}
+        disabled={Boolean(isGenerating)}
+      >
+        {isGenerating ? "合成中…" : firstFrameLocked ? "生成尾帧" : "生成图片"}
       </button>
 
-      {lastFrameModalOpen ? (
-        <div
-          className={styles.overlay}
-          role="dialog"
-          aria-modal="true"
-          aria-label="查看尾帧图"
-          onClick={() => setLastFrameModalOpen(false)}
-        >
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <div className={styles.modalTitle}>上个分镜视频尾帧图</div>
-              <button type="button" className={styles.secondaryBtn} onClick={() => setLastFrameModalOpen(false)}>
-                关闭
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              {prevVideoLastFrameUrl ? (
-                <div className={styles.modalImgWrap}>
-                  <Image className={styles.modalImg} src={prevVideoLastFrameUrl} alt="" width={1200} height={900} unoptimized />
-                </div>
-              ) : (
-                <div className={styles.shotCutError}>未在数据库中找到上个分镜视频的尾帧图</div>
-              )}
-            </div>
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                onClick={() => setLastFrameModalOpen(false)}
-                disabled={usingLastFrame}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                className={styles.modalPrimaryBtn}
-                disabled={usingLastFrame || !prevVideoLastFrameUrl}
-                onClick={async () => {
-                  setShotCutError(null)
-                  if (!prevVideoLastFrameUrl) {
-                    setShotCutError("未在数据库中找到上个分镜视频的尾帧图")
-                    setLastFrameModalOpen(false)
-                    return
-                  }
-                  try {
-                    setUsingLastFrame(true)
-                    await onUsePrevVideoLastFrame?.(prevVideoLastFrameUrl)
-                    setLastFrameModalOpen(false)
-                  } catch (e) {
-                    const anyErr = e as { message?: string }
-                    setShotCutError(anyErr?.message ?? "使用尾帧图失败")
-                    setLastFrameModalOpen(false)
-                  } finally {
-                    setUsingLastFrame(false)
-                  }
-                }}
-              >
-                使用
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <LastFrameModal
+        open={lastFrameModalOpen}
+        prevVideoLastFrameUrl={prevVideoLastFrameUrl}
+        errorText={shotCutError}
+        usingLastFrame={usingLastFrame}
+        onClose={() => setLastFrameModalOpen(false)}
+        onUse={async () => {
+          setShotCutError(null)
+          if (!prevVideoLastFrameUrl) {
+            setShotCutError("未在数据库中找到上个分镜视频的尾帧图")
+            setLastFrameModalOpen(false)
+            return
+          }
+          try {
+            setUsingLastFrame(true)
+            await onUsePrevVideoLastFrame?.(prevVideoLastFrameUrl)
+            setFirstFrameLocked(true)
+            setActivePromptTab("last")
+            setLastFrameModalOpen(false)
+          } catch (e) {
+            const anyErr = e as { message?: string }
+            setShotCutError(anyErr?.message ?? "使用尾帧图失败")
+            setLastFrameModalOpen(false)
+          } finally {
+            setUsingLastFrame(false)
+          }
+        }}
+      />
     </aside>
   )
 }

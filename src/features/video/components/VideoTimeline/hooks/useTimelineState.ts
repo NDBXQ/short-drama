@@ -97,8 +97,9 @@ export function useTimelineState({
   const totalSeconds = useMemo(() => {
     const endA = audioClips.reduce((m, c) => Math.max(m, c.start + c.duration), 0)
     const endV = videoClips.reduce((m, c) => Math.max(m, c.start + c.duration), 0)
-    const byContent = Math.max(4, Math.ceil(Math.max(endA, endV)))
-    return Math.max(byContent, viewportSeconds)
+    const base = Math.max(4, Math.ceil(Math.max(endA, endV)))
+    const tailPadding = 2
+    return Math.max(base + tailPadding, viewportSeconds)
   }, [audioClips, videoClips, viewportSeconds])
 
   const widthPx = Math.max(640, TRACK_OFFSET_PX + TRACK_RIGHT_PADDING_PX + Math.round(totalSeconds * PX_PER_SECOND))

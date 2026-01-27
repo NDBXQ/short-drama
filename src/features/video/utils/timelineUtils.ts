@@ -14,6 +14,7 @@ export type VideoClip = {
   id: string
   segmentId: string
   title: string
+  src?: string
   start: number
   duration: number
   trimStart: number

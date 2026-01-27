@@ -14,29 +14,12 @@
   padding-bottom: 14px;
 }
 
-.panelTitle {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text-main);
-  margin: 0 0 10px 0;
-}
-
 .titleRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
-}
-
-.field {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 10px 10px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .promptStack {
@@ -46,6 +29,33 @@
   padding-right: 18px;
   padding-bottom: 18px;
   overflow: visible;
+}
+
+.promptStackSingle {
+  min-height: 170px;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+
+.firstFrameLockedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 14px;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.firstFrameLockedText {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.66);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .promptCard {
@@ -133,46 +143,8 @@
   box-shadow: 0 0 0 3px rgba(109, 94, 247, 0.18);
 }
 
-.row2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.select,
-.input {
-  width: 100%;
-  height: 34px;
-  border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--text-main);
-  padding: 0 10px;
-  font-size: 12px;
-  outline: none;
-}
-
-.staticText {
-  width: 100%;
-  min-height: 34px;
-  border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--text-main);
-  padding: 7px 10px;
-  font-size: 12px;
-  line-height: 20px;
-  word-break: break-word;
-}
-
 .group {
   display: grid;
-}
-
-.select:focus,
-.input:focus {
-  border-color: rgba(109, 94, 247, 0.7);
-  box-shadow: 0 0 0 3px rgba(109, 94, 247, 0.18);
 }
 
 .groupHeader {
@@ -226,108 +198,6 @@
   color: rgba(220, 38, 38, 0.9);
   font-size: 12px;
   line-height: 1.4;
-}
-
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.38);
-  display: grid;
-  place-items: center;
-  z-index: 70;
-  padding: 18px;
-}
-
-.modal {
-  width: min(640px, calc(100vw - 36px));
-  max-height: calc(100vh - 36px);
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-}
-
-.modalHeader {
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.modalTitle {
-  font-size: 13px;
-  font-weight: 900;
-  color: var(--text-main);
-}
-
-.modalBody {
-  padding: 14px;
-  overflow: auto;
-  display: grid;
-  gap: 12px;
-}
-
-.modalImgWrap {
-  width: 100%;
-  border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(15, 23, 42, 0.02);
-  overflow: hidden;
-}
-
-.modalImg {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.modalActions {
-  padding: 12px 14px;
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.modalPrimaryBtn {
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(109, 94, 247, 0.65);
-  background: #4f46e5;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.modalPrimaryBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.addLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  border: 1px dashed rgba(15, 23, 42, 0.18);
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--blue-primary);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.addLink:hover {
-  background: #fff;
-  border-color: rgba(109, 94, 247, 0.35);
 }
 
 .chipList {
@@ -391,57 +261,6 @@
   font-weight: 600;
 }
 
-.chipRemove {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #fff;
-  color: var(--text-secondary);
-  display: inline-grid;
-  place-items: center;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.chipRemove:hover {
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #ef4444;
-}
-
-.modeTabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(255, 255, 255, 0.75);
-  border-radius: 999px;
-}
-
-.modeTab {
-  height: 34px;
-  padding: 0 12px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  border-radius: 999px;
-  transition: background-color 0.18s ease, color 0.18s ease;
-}
-
-.modeTab:hover {
-  color: var(--blue-primary);
-  background: rgba(109, 94, 247, 0.10);
-}
-
-.modeTabActive {
-  color: var(--text-main);
-  background: rgba(109, 94, 247, 0.16);
-}
-
 .primaryBtn {
   width: 100%;
   height: 38px;
@@ -460,13 +279,6 @@
 
 .primaryBtn:hover {
   background: #4338ca;
-}
-
-.hint {
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.45;
-  margin-top: 10px;
 }
 
 @media (max-width: 1023px) {

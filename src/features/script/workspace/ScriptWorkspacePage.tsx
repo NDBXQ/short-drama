@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactElement } from "react"
 import { useRouter } from "next/navigation"
 import styles from "./ScriptWorkspacePage.module.css"
@@ -9,6 +9,7 @@ import type { ScriptWorkspaceMode, OutlineItem } from "./utils"
 import { OutlineNav } from "./components/OutlineNav"
 import { PreviewPanel } from "./components/PreviewPanel"
 import { ChatSidebar } from "./components/ChatSidebar"
+import { WorkspaceResizeHandle } from "./components/WorkspaceResizeHandle"
 import { useOutlineActions } from "./hooks/useOutlineActions"
 import { useScriptRewrite } from "./hooks/useScriptRewrite"
 
@@ -28,6 +29,7 @@ type ScriptWorkspacePageProps = Readonly<{
  */
 export function ScriptWorkspacePage({ mode, storyId, outline, outlines }: ScriptWorkspacePageProps): ReactElement {
   const router = useRouter()
+  const gridRef = useRef<HTMLDivElement | null>(null)
   const outlineIndex = (() => {
     const parsed = Number(outline)
     if (!Number.isFinite(parsed)) return 1
@@ -101,45 +103,49 @@ export function ScriptWorkspacePage({ mode, storyId, outline, outlines }: Script
 
   return (
     <main className={styles.main}>
-      <section className={styles.grid}>
-        <OutlineNav
-          outlines={localOutlines}
-          activeOutline={activeOutline}
-          rewriteBySeq={rewriteBySeq}
-          storyId={storyId}
-          mode={mode}
-          deletingOutlineId={deletingOutlineId}
-          setConfirmDeleteOutlineId={setConfirmDeleteOutlineId}
-        />
+      <section className={styles.gridFrame}>
+        <div className={styles.grid} ref={gridRef}>
+          <OutlineNav
+            outlines={localOutlines}
+            activeOutline={activeOutline}
+            rewriteBySeq={rewriteBySeq}
+            storyId={storyId}
+            mode={mode}
+            deletingOutlineId={deletingOutlineId}
+            setConfirmDeleteOutlineId={setConfirmDeleteOutlineId}
+          />
 
-        <PreviewPanel
-          activeOutline={activeOutline}
-          previewMode={previewMode}
-          setPreviewMode={setPreviewMode}
-          canShowRewrite={canShowRewrite}
-          activeRewrite={activeRewrite}
-          activeDraft={activeDraft}
-          generatingStoryboard={generatingStoryboard}
-          handleGenerateStoryboardText={handleGenerateStoryboardText}
-        />
+          <PreviewPanel
+            activeOutline={activeOutline}
+            previewMode={previewMode}
+            setPreviewMode={setPreviewMode}
+            canShowRewrite={canShowRewrite}
+            activeRewrite={activeRewrite}
+            activeDraft={activeDraft}
+            generatingStoryboard={generatingStoryboard}
+            handleGenerateStoryboardText={handleGenerateStoryboardText}
+          />
 
-        <ChatSidebar
-          rewriteMessages={rewriteMessages}
-          rewriteRequirements={rewriteRequirements}
-          setRewriteRequirements={setRewriteRequirements}
-          handleRewrite={handleRewrite}
-          activeOutline={activeOutline}
-          isRewriteStreaming={isRewriteStreaming}
-          toast={toast}
-          threadRef={threadRef}
-          onScrollThread={() => {
-            const el = threadRef.current
-            if (!el) return
-            const threshold = 24
-            const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold
-            shouldAutoScrollRef.current = atBottom
-          }}
-        />
+          <WorkspaceResizeHandle containerRef={gridRef} />
+
+          <ChatSidebar
+            rewriteMessages={rewriteMessages}
+            rewriteRequirements={rewriteRequirements}
+            setRewriteRequirements={setRewriteRequirements}
+            handleRewrite={handleRewrite}
+            activeOutline={activeOutline}
+            isRewriteStreaming={isRewriteStreaming}
+            toast={toast}
+            threadRef={threadRef}
+            onScrollThread={() => {
+              const el = threadRef.current
+              if (!el) return
+              const threshold = 24
+              const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold
+              shouldAutoScrollRef.current = atBottom
+            }}
+          />
+        </div>
       </section>
 
       {confirmDeleteOutlineId ? (

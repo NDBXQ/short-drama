@@ -1,0 +1,48 @@
+.assetPanel {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 14px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.topTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(248, 250, 252, 0.92);
+  border-radius: 12px;
+}
+
+.topTab {
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.70);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.topTab:hover {
+  background: rgba(79, 70, 229, 0.08);
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.topTabActive {
+  background: rgba(79, 70, 229, 0.14);
+  color: rgba(15, 23, 42, 0.92);
+}
+

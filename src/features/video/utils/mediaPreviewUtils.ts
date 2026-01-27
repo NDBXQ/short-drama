@@ -12,10 +12,20 @@ export type TimelineVideoClip = {
   id: string
   segmentId: string
   title: string
+  src?: string
   start: number
   duration: number
   trimStart: number
   trimEnd: number
+}
+
+export type TimelineAudioClip = {
+  id: string
+  assetId: string
+  name: string
+  start: number
+  duration: number
+  src?: string
 }
 
 export type PreviewPlaylistItem = {
@@ -43,12 +53,28 @@ export const calculateTimelineVideoClips = (initialTimeline: any): TimelineVideo
       id: String(c?.id ?? ""),
       segmentId: String(c?.segmentId ?? ""),
       title: String(c?.title ?? ""),
+      src: typeof c?.src === "string" ? c.src : undefined,
       start: Number(c?.start ?? 0),
       duration: Number(c?.duration ?? 0),
       trimStart: Number(c?.trimStart ?? 0),
       trimEnd: Number(c?.trimEnd ?? 0)
     }))
     .filter((c) => c.segmentId && Number.isFinite(c.start) && Number.isFinite(c.duration) && c.duration > 0)
+}
+
+export const calculateTimelineAudioClips = (initialTimeline: any): TimelineAudioClip[] => {
+  const raw = initialTimeline?.audioClips
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((c: any) => ({
+      id: String(c?.id ?? ""),
+      assetId: String(c?.assetId ?? ""),
+      name: String(c?.name ?? ""),
+      start: Number(c?.start ?? 0),
+      duration: Number(c?.duration ?? 0),
+      src: typeof c?.src === "string" ? c.src : undefined
+    }))
+    .filter((c) => c.id && Number.isFinite(c.start) && Number.isFinite(c.duration) && c.duration > 0 && (c.src ?? "").trim())
 }
 
 export const calculatePreviewPlaylist = (
@@ -95,7 +121,7 @@ export const calculatePreviewPlaylist = (
         key: clip.id || `${clip.segmentId}:${i}`,
         segmentId: clip.segmentId,
         title: clip.title || seg?.title || `镜 ${i + 1}`,
-        videoSrc: (seg?.videoSrc ?? "").trim() || null,
+        videoSrc: ((seg?.videoSrc ?? clip.src ?? "") as string).trim() || null,
         playDurationSeconds: play,
         trimStartSeconds: trimStart,
         trimEndSeconds: trimEnd

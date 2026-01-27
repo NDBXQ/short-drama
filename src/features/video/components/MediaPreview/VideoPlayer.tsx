@@ -1,10 +1,8 @@
-
-import Image from "next/image"
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react"
+import { useMemo, useState, type ReactElement } from "react"
 import styles from "./VideoPlayer.module.css"
-import { TwoFrameImagePreview } from "../CreatePage/TwoFrameImagePreview"
-import { createLocalPreviewSvg } from "../../utils/previewUtils"
-import { PreviewPlaylistItem, TimelineVideoClip } from "../../utils/mediaPreviewUtils"
+import { PreviewAllPlayer } from "./PreviewAllPlayer"
+import { SinglePlayer } from "./SinglePlayer"
+import type { PreviewPlaylistItem, TimelineAudioClip, TimelineVideoClip } from "../../utils/mediaPreviewUtils"
 
 type Props = {
   mode: "image" | "video"
@@ -15,10 +13,17 @@ type Props = {
   previewAllActive: boolean
   previewAllPlaying: boolean
   previewAllLocalTime: number
+  previewAllElapsedSeconds: number
+  nextPreloadVideoSrc?: string
   currentItem: PreviewPlaylistItem | null
   currentItemDurationSeconds: number
   timelineVideoClips: TimelineVideoClip[]
+  timelineAudioClips: TimelineAudioClip[]
   activeVideoClip?: TimelineVideoClip | null
+  disableClipConstraint?: boolean
+  onRequestVideoEdit?: () => void
+  onClearVideoEdit?: () => void
+  videoEditLoading?: boolean
   onStopPreviewAll: () => void
   onTogglePreviewAllPlaying: () => void
   onAdvancePreviewAll: () => void
@@ -35,10 +40,17 @@ export function VideoPlayer({
   previewAllActive,
   previewAllPlaying,
   previewAllLocalTime,
+  previewAllElapsedSeconds,
+  nextPreloadVideoSrc,
   currentItem,
   currentItemDurationSeconds,
   timelineVideoClips,
+  timelineAudioClips,
   activeVideoClip,
+  disableClipConstraint,
+  onRequestVideoEdit,
+  onClearVideoEdit,
+  videoEditLoading,
   onStopPreviewAll,
   onTogglePreviewAllPlaying,
   onAdvancePreviewAll,
@@ -46,138 +58,28 @@ export function VideoPlayer({
   onStartPreviewAll
 }: Props): ReactElement {
   const [mediaAspect, setMediaAspect] = useState<string>("16 / 9")
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const placeholderTimerRef = useRef<number | null>(null)
-  const placeholderIntervalRef = useRef<number | null>(null)
-  const advanceGuardRef = useRef<{ until: number }>({ until: 0 })
 
   const isVideoTab = mode === "video"
-  const isVideoFile = useMemo(() => /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(activeImageSrc), [activeImageSrc])
-  const currentItemHasVideo = Boolean(currentItem?.videoSrc)
   const previewStyle = useMemo(() => ({ ["--media-ar" as any]: mediaAspect }), [mediaAspect])
-  const isShowingVideoEl = isVideoTab && (previewAllActive ? currentItemHasVideo : isVideoFile)
+  const resolvedVideoSrc = useMemo(() => {
+    if (!isVideoTab) return ""
+    if (previewAllActive) return (currentItem?.videoSrc ?? "").trim()
+    const fromClip = ((activeVideoClip as any)?.src as string | undefined) ?? ""
+    const clip = typeof fromClip === "string" ? fromClip.trim() : ""
+    if (clip) return clip
+    return (activeImageSrc ?? "").trim()
+  }, [activeImageSrc, activeVideoClip, currentItem?.videoSrc, isVideoTab, previewAllActive])
+
+  const resolvedIsVideoFile = useMemo(() => /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(resolvedVideoSrc), [resolvedVideoSrc])
+  const isShowingVideoEl = isVideoTab && (previewAllActive ? Boolean(currentItem?.videoSrc) : resolvedIsVideoFile)
   const shouldFillInner = isVideoTab
-
-  useEffect(() => {
-    if (previewAllActive) return
-    if (!isVideoTab) return
-    if (!isVideoFile) return
-    if (!activeVideoClip) return
-    const el = videoRef.current
-    if (!el) return
-    const startAt = Math.max(0, Number(activeVideoClip.trimStart ?? 0))
-    const endAt = Math.max(startAt, (Number(el.duration) || 0) - Math.max(0, Number(activeVideoClip.trimEnd ?? 0)))
-    const cur = Number(el.currentTime) || 0
-    const desired = Math.max(startAt, Math.min(endAt, cur))
-    if (Number.isFinite(desired) && Math.abs(cur - desired) > 0.05) el.currentTime = desired
-  }, [activeVideoClip, isVideoFile, isVideoTab, previewAllActive])
-
-  const clearPlaceholderTimers = () => {
-    if (placeholderTimerRef.current) {
-      window.clearTimeout(placeholderTimerRef.current)
-      placeholderTimerRef.current = null
-    }
-    if (placeholderIntervalRef.current) {
-      window.clearInterval(placeholderIntervalRef.current)
-      placeholderIntervalRef.current = null
-    }
-  }
-
-  const playWithSoundFallback = useCallback((el: HTMLVideoElement) => {
-    try {
-      el.muted = false
-      el.volume = 1
-    } catch {}
-    void el.play().catch(() => {
-      try {
-        el.muted = true
-      } catch {}
-      void el.play().catch(() => {})
-    })
-  }, [])
-
-  const safeAdvance = useCallback(() => {
-    const now = performance.now()
-    if (now < advanceGuardRef.current.until) return
-    advanceGuardRef.current.until = now + 300
-    const el = videoRef.current
-    if (el) el.pause()
-    onAdvancePreviewAll()
-  }, [onAdvancePreviewAll])
-
-  // Handle preview playback logic
-  useEffect(() => {
-    if (!previewAllActive) {
-      clearPlaceholderTimers()
-      return
-    }
-    if (!currentItem) return
-
-    clearPlaceholderTimers()
-
-    if (!previewAllPlaying) {
-      const el = videoRef.current
-      if (el) el.pause()
-      return
-    }
-
-    if (currentItem.videoSrc) {
-      const el = videoRef.current
-      if (!el) return
-      playWithSoundFallback(el)
-      return
-    }
-
-    const initialLocal = Math.max(0, Math.min(currentItemDurationSeconds, previewAllLocalTime))
-    const remainingMs = Math.max(0, Math.round((currentItemDurationSeconds - initialLocal) * 1000))
-    const startedAt = performance.now()
-    placeholderIntervalRef.current = window.setInterval(() => {
-      const elapsed = initialLocal + (performance.now() - startedAt) / 1000
-      onUpdatePreviewAllLocalTime(Math.min(currentItemDurationSeconds, Math.max(0, elapsed)))
-    }, 80)
-    placeholderTimerRef.current = window.setTimeout(() => {
-      safeAdvance()
-    }, remainingMs)
-  }, [
-    currentItem,
-    currentItemDurationSeconds,
-    playWithSoundFallback,
-    previewAllActive,
-    previewAllPlaying,
-    previewAllLocalTime,
-    onUpdatePreviewAllLocalTime,
-    safeAdvance
-  ])
-
-  useEffect(() => {
-    if (!previewAllActive) return
-    if (!currentItem?.videoSrc) return
-    const el = videoRef.current
-    if (!el) return
-    const startAt = Math.max(0, Number(currentItem?.trimStartSeconds ?? 0))
-    const endAt = Math.max(startAt, (Number(el.duration) || 0) - Math.max(0, Number(currentItem?.trimEndSeconds ?? 0)))
-    const desired = Math.max(startAt, Math.min(endAt, startAt + Math.max(0, previewAllLocalTime)))
-    const cur = Number(el.currentTime) || 0
-    if (Number.isFinite(desired) && Math.abs(cur - desired) > 0.25) {
-      el.currentTime = desired
-      if (previewAllPlaying) playWithSoundFallback(el)
-    }
-  }, [currentItem?.videoSrc, currentItem?.trimEndSeconds, currentItem?.trimStartSeconds, playWithSoundFallback, previewAllActive, previewAllLocalTime, previewAllPlaying])
-
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      clearPlaceholderTimers()
-    }
-  }, [])
 
   const handleStartClick = () => {
     if (previewAllActive) {
       onStopPreviewAll()
       return
     }
-    
-    // Validation logic
+
     if (timelineVideoClips.length > 0) {
       const sorted = [...timelineVideoClips].sort((a, b) => (a.start + a.trimStart) - (b.start + b.trimStart))
       for (let i = 0; i < sorted.length - 1; i += 1) {
@@ -196,18 +98,8 @@ export function VideoPlayer({
         }
       }
     }
-    
+
     onStartPreviewAll()
-    const tryPlay = (tries: number) => {
-      const el = videoRef.current
-      if (el) {
-        playWithSoundFallback(el)
-        return
-      }
-      if (tries <= 0) return
-      window.requestAnimationFrame(() => tryPlay(tries - 1))
-    }
-    window.requestAnimationFrame(() => tryPlay(10))
   }
 
   return (
@@ -219,11 +111,13 @@ export function VideoPlayer({
         style={previewStyle}
       >
         <div className={styles.previewOverlay} aria-label="预览信息">
-          <div className={styles.previewTitle} title={previewAllActive ? (currentItem?.title ?? activeTitle) : activeTitle}>
-            {(previewAllActive ? (currentItem?.title ?? activeTitle) : activeTitle) || "预览"}
+          <div className={styles.previewTitleRow}>
+            <div className={styles.previewTitle} title={previewAllActive ? (currentItem?.title ?? activeTitle) : activeTitle}>
+              {(previewAllActive ? (currentItem?.title ?? activeTitle) : activeTitle) || "预览"}
+            </div>
+            <div className={styles.previewHint}>{isVideoTab ? "视频预览" : "图片预览"}</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <div className={styles.previewHint}>{isVideoTab ? "视频预览" : "图片预览"}</div>
             {isVideoTab ? (
               <button
                 type="button"
@@ -232,6 +126,23 @@ export function VideoPlayer({
                 onClick={handleStartClick}
               >
                 {previewAllActive ? "停止预览" : "全片预览"}
+              </button>
+            ) : null}
+            {isVideoTab && onRequestVideoEdit ? (
+              <button
+                type="button"
+                className={styles.previewAllBtnGhost}
+                style={{ pointerEvents: "auto", height: 28, borderRadius: 999, opacity: videoEditLoading ? 0.7 : 1 }}
+                onClick={() => {
+                  if (onClearVideoEdit) {
+                    onClearVideoEdit()
+                    return
+                  }
+                  void onRequestVideoEdit()
+                }}
+                disabled={Boolean(videoEditLoading)}
+              >
+                {onClearVideoEdit ? "返回分镜" : videoEditLoading ? "生成中…" : "生成成片"}
               </button>
             ) : null}
             {isVideoTab && previewAllActive ? (
@@ -247,139 +158,33 @@ export function VideoPlayer({
           </div>
         </div>
         {previewAllActive ? (
-          currentItemHasVideo ? (
-            <video
-              ref={videoRef}
-              key={currentItem?.key ?? "preview"}
-              src={currentItem?.videoSrc ?? ""}
-              playsInline
-              className={styles.previewVideo}
-              onClick={(e) => {
-                const el = e.currentTarget
-                if (el.paused) {
-                  playWithSoundFallback(el)
-                } else {
-                  el.pause()
-                }
-              }}
-              onLoadedMetadata={(e) => {
-                const el = e.currentTarget
-                const w = el.videoWidth
-                const h = el.videoHeight
-                if (w > 0 && h > 0) setMediaAspect(`${w} / ${h}`)
-                const startAt = Math.max(0, Number(currentItem?.trimStartSeconds ?? 0))
-                const endAt = Math.max(startAt, (Number(el.duration) || 0) - Math.max(0, Number(currentItem?.trimEndSeconds ?? 0)))
-                const desired = Math.max(startAt, Math.min(endAt, startAt + Math.max(0, previewAllLocalTime)))
-                if (Number.isFinite(desired)) el.currentTime = desired
-                if (previewAllPlaying) playWithSoundFallback(el)
-              }}
-              onTimeUpdate={(e) => {
-                const el = e.currentTarget
-                const t = Number(el.currentTime) || 0
-                const startAt = Math.max(0, Number(currentItem?.trimStartSeconds ?? 0))
-                const endAt = Math.max(startAt, (Number(el.duration) || 0) - Math.max(0, Number(currentItem?.trimEndSeconds ?? 0)))
-                if (t >= endAt - 0.05) {
-                  safeAdvance()
-                  return
-                }
-                const local = Math.max(0, t - startAt)
-                onUpdatePreviewAllLocalTime(Math.min(currentItemDurationSeconds, local))
-              }}
-              onEnded={() => {
-                safeAdvance()
-              }}
-            />
-          ) : (
-            <div className={styles.previewPlaceholderVideo} aria-label="占位视频" />
-          )
-        ) : isVideoTab && activeImageSrc ? (
-          isVideoFile ? (
-            <video
-              ref={videoRef}
-              src={activeImageSrc}
-              playsInline
-              className={styles.previewVideo}
-              onClick={(e) => {
-                const el = e.currentTarget
-                if (el.paused) {
-                  playWithSoundFallback(el)
-                } else {
-                  el.pause()
-                }
-              }}
-              onLoadedMetadata={(e) => {
-                const el = e.currentTarget
-                const w = el.videoWidth
-                const h = el.videoHeight
-                if (w > 0 && h > 0) setMediaAspect(`${w} / ${h}`)
-                if (!activeVideoClip) return
-                const startAt = Math.max(0, Number(activeVideoClip.trimStart ?? 0))
-                const endAt = Math.max(startAt, (Number(el.duration) || 0) - Math.max(0, Number(activeVideoClip.trimEnd ?? 0)))
-                const cur = Number(el.currentTime) || 0
-                const desired = Math.max(startAt, Math.min(endAt, cur))
-                if (Number.isFinite(desired) && Math.abs(cur - desired) > 0.05) el.currentTime = desired
-              }}
-              onPlay={(e) => {
-                if (!activeVideoClip) return
-                const el = e.currentTarget
-                const startAt = Math.max(0, Number(activeVideoClip.trimStart ?? 0))
-                if ((Number(el.currentTime) || 0) < startAt - 0.05) el.currentTime = startAt
-              }}
-              onTimeUpdate={(e) => {
-                if (!activeVideoClip) return
-                const el = e.currentTarget
-                const startAt = Math.max(0, Number(activeVideoClip.trimStart ?? 0))
-                const endAt = Math.max(startAt, (Number(el.duration) || 0) - Math.max(0, Number(activeVideoClip.trimEnd ?? 0)))
-                const t = Number(el.currentTime) || 0
-                if (t < startAt - 0.05) {
-                  el.currentTime = startAt
-                  return
-                }
-                if (t >= endAt - 0.05) {
-                  el.pause()
-                  el.currentTime = endAt
-                }
-              }}
-            />
-          ) : (
-            <Image
-              src={activeImageSrc}
-              alt={activeTitle}
-              fill
-              unoptimized
-              sizes="(max-width: 1023px) 100vw, 980px"
-              onLoadingComplete={(img) => {
-                const w = img.naturalWidth
-                const h = img.naturalHeight
-                if (w > 0 && h > 0) setMediaAspect(`${w} / ${h}`)
-              }}
-            />
-          )
-        ) : !isVideoTab ? (
-          <TwoFrameImagePreview
-            key={`${(activeFrameImages?.first ?? "").trim()}|${(activeFrameImages?.last ?? "").trim()}|${activeTitle}`}
-            title={activeTitle || "预览"}
-            frames={[
-              {
-                label: "首帧",
-                src:
-                  (activeFrameImages?.first ?? "").trim() ||
-                  createLocalPreviewSvg(`${activeTitle || "首帧"} / 未生成`)
-              },
-              {
-                label: "尾帧",
-                src:
-                  (activeFrameImages?.last ?? "").trim() ||
-                  createLocalPreviewSvg(`${activeTitle || "尾帧"} / 未生成`)
-              }
-            ]}
-            onImageLoad={({ naturalWidth, naturalHeight }) => {
-              if (naturalWidth > 0 && naturalHeight > 0) setMediaAspect(`${naturalWidth} / ${naturalHeight}`)
-            }}
-            onEdit={onOpenFrameImage}
+          <PreviewAllPlayer
+            activeTitle={activeTitle}
+            currentItem={currentItem}
+            currentItemDurationSeconds={currentItemDurationSeconds}
+            previewAllPlaying={previewAllPlaying}
+            previewAllLocalTime={previewAllLocalTime}
+            previewAllElapsedSeconds={previewAllElapsedSeconds}
+            nextPreloadVideoSrc={nextPreloadVideoSrc}
+            timelineAudioClips={timelineAudioClips}
+            onAdvancePreviewAll={onAdvancePreviewAll}
+            onUpdatePreviewAllLocalTime={onUpdatePreviewAllLocalTime}
+            onMediaAspect={setMediaAspect}
+            onStopPreviewAll={onStopPreviewAll}
           />
         ) : (
-          <div className={styles.previewPlaceholder}>暂无预览</div>
+          <SinglePlayer
+            isVideoTab={isVideoTab}
+            activeImageSrc={activeImageSrc}
+            activeFrameImages={activeFrameImages}
+            activeTitle={activeTitle}
+            onOpenFrameImage={onOpenFrameImage}
+            resolvedVideoSrc={resolvedVideoSrc}
+            resolvedIsVideoFile={resolvedIsVideoFile}
+            activeVideoClip={activeVideoClip}
+            disableClipConstraint={disableClipConstraint}
+            onMediaAspect={setMediaAspect}
+          />
         )}
       </div>
     </div>

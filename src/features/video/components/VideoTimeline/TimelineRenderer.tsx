@@ -15,6 +15,7 @@ interface TimelineRendererProps {
   videoClips: VideoClip[]
   audioClips: AudioClip[]
   activeId: string
+  segmentFirstFrames?: Record<string, string>
   selectedClip: { type: "video" | "audio"; id: string } | null
   totalSeconds: number
   widthPx: number
@@ -41,6 +42,7 @@ export function TimelineRenderer({
   videoClips,
   audioClips,
   activeId,
+  segmentFirstFrames,
   selectedClip,
   totalSeconds,
   widthPx,
@@ -120,6 +122,7 @@ export function TimelineRenderer({
               {videoClips.map((clip) => {
                 const active = clip.segmentId === activeId
                 const selected = selectedClip?.type === "video" && selectedClip.id === clip.id
+                const thumb = (segmentFirstFrames?.[clip.segmentId] ?? "").trim()
                 const left = clipLeftPx(clip.start + clip.trimStart)
                 const width = clipWidthPx(clip.duration - clip.trimStart - clip.trimEnd)
                 return (
@@ -132,6 +135,13 @@ export function TimelineRenderer({
                     role="button"
                     tabIndex={0}
                   >
+                    {thumb ? (
+                      <div
+                        className={styles.clipThumb}
+                        style={{ ["--clip-thumb-url" as any]: `url(${thumb})` } as any}
+                        aria-hidden
+                      />
+                    ) : null}
                     <div className={styles.clipTitle}>{clip.title}</div>
                     <div data-handle="start" className={styles.clipHandleLeft} onPointerDown={makeTrimHandler(clip, "start")} />
                     <div data-handle="end" className={styles.clipHandleRight} onPointerDown={makeTrimHandler(clip, "end")} />
@@ -162,7 +172,6 @@ export function TimelineRenderer({
             </TimelineTrack>
           </div>
         </div>
-        <div className={styles.dropHint}>拖拽右侧素材到轨道以添加</div>
       </div>
     </div>
   )

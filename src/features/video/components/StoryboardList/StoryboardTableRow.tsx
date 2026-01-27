@@ -1,4 +1,5 @@
-import { type ReactElement } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react"
+import { createPortal } from "react-dom"
 import type { StoryboardItem } from "../../types"
 import type { ScriptGenerateState } from "../../hooks/useScriptGeneration"
 import styles from "./StoryboardTableRow.module.css"
@@ -40,6 +41,40 @@ export function StoryboardTableRow({
   onOpenEdit,
   onDelete
 }: StoryboardTableRowProps): ReactElement {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [moreKind, setMoreKind] = useState<"role" | "background" | "item">("background")
+  const [moreLabel, setMoreLabel] = useState("")
+  const [moreList, setMoreList] = useState<
+    Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
+  >([])
+  const canPortal = typeof document !== "undefined"
+
+  useEffect(() => {
+    if (!moreOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      setMoreOpen(false)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [moreOpen])
+
+  const openMore = useCallback(
+    (
+      params: {
+        kind: "role" | "background" | "item"
+        label: string
+        list: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
+      }
+    ) => {
+      setMoreKind(params.kind)
+      setMoreLabel(params.label)
+      setMoreList(params.list)
+      setMoreOpen(true)
+    },
+    []
+  )
+
   const hintText =
     generationState && generationState.status !== "idle"
       ? generationState.message ?? (generationState.status === "generating" ? "脚本生成中…" : generationState.status === "success" ? "已生成" : "生成失败")
@@ -102,7 +137,16 @@ export function StoryboardTableRow({
             <img className={styles.previewThumbImg} src={img.thumbnailUrl ?? img.url} alt={img.name} />
           </button>
         ))}
-        {rest > 0 ? <div className={`${styles.previewThumb} ${styles.previewThumbMore}`}>+{rest}</div> : null}
+        {rest > 0 ? (
+          <button
+            type="button"
+            className={`${styles.previewThumb} ${styles.previewThumbMore}`}
+            onClick={() => openMore({ kind, label, list })}
+            aria-label={`查看全部${label}素材`}
+          >
+            +{rest}
+          </button>
+        ) : null}
         {list.length === 0 && shouldShowPlaceholder ? (
           <button
             type="button"
@@ -127,44 +171,121 @@ export function StoryboardTableRow({
     )
   }
 
+  const moreTitle = useMemo(() => `镜头 ${item.scene_no} · ${moreLabel}素材`, [item.scene_no, moreLabel])
+
   return (
-    <tr>
-      <td className={styles.colCheckbox}>
-        <input type="checkbox" checked={isSelected} onChange={() => onSelect(item.id)} />
-      </td>
-      <td className={styles.colNo}>
-        <span className={styles.sceneNo}>{item.scene_no}</span>
-      </td>
-      <td className={styles.colVisual}>
-        <div className={styles.visualContent}>
-          {item.storyboard_text ? <div className={styles.storyboardText}>{item.storyboard_text}</div> : null}
-          {hintText ? <div className={`${styles.scriptHint} ${hintToneClass}`}>{hintText}</div> : null}
-        </div>
-      </td>
-      <td className={styles.colRole}>
-        {renderPreviewStack(previews?.role ?? [], "role", "角色")}
-      </td>
-      <td className={styles.colBackground}>
-        {renderPreviewStack(previews?.background ?? [], "background", "背景")}
-      </td>
-      <td className={styles.colItems}>
-        {renderPreviewStack(previews?.item ?? [], "item", "物品")}
-      </td>
-      <td className={styles.colActions}>
-        <div className={styles.actionGroup}>
-          <button
-            type="button"
-            className={styles.actionBtn}
-            title="预览"
-            onClick={() => onOpenEdit(item.id, item.storyboard_text ?? "")}
-          >
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-          </button>
-          <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => onDelete(item.id)} title="删除">
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          </button>
-        </div>
-      </td>
-    </tr>
+    <>
+      <tr>
+        <td className={styles.colCheckbox}>
+          <input type="checkbox" checked={isSelected} onChange={() => onSelect(item.id)} />
+        </td>
+        <td className={styles.colNo}>
+          <span className={styles.sceneNo}>{item.scene_no}</span>
+        </td>
+        <td className={styles.colVisual}>
+          <div className={styles.visualContent}>
+            {item.storyboard_text ? <div className={styles.storyboardText}>{item.storyboard_text}</div> : null}
+            {hintText ? <div className={`${styles.scriptHint} ${hintToneClass}`}>{hintText}</div> : null}
+          </div>
+        </td>
+        <td className={styles.colRole}>
+          {renderPreviewStack(previews?.role ?? [], "role", "角色")}
+        </td>
+        <td className={styles.colBackground}>
+          {renderPreviewStack(previews?.background ?? [], "background", "背景")}
+        </td>
+        <td className={styles.colItems}>
+          {renderPreviewStack(previews?.item ?? [], "item", "物品")}
+        </td>
+        <td className={styles.colActions}>
+          <div className={styles.actionGroup}>
+            <button
+              type="button"
+              className={styles.actionBtn}
+              title="预览"
+              onClick={() => onOpenEdit(item.id, item.storyboard_text ?? "")}
+            >
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
+              </svg>
+            </button>
+            <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => onDelete(item.id)} title="删除">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {canPortal && moreOpen
+        ? createPortal(
+            <div
+              className={styles.moreOverlay}
+              role="presentation"
+              onClick={() => setMoreOpen(false)}
+            >
+              <div
+                className={styles.moreModal}
+                role="dialog"
+                aria-modal="true"
+                aria-label={moreTitle}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className={styles.moreHeader}>
+                  <div className={styles.moreTitle}>{moreTitle}</div>
+                  <button type="button" className={styles.moreCloseBtn} onClick={() => setMoreOpen(false)} aria-label="关闭">
+                    ×
+                  </button>
+                </div>
+                <div className={styles.moreGrid} aria-label="素材列表">
+                  {moreList.map((img) => (
+                    <button
+                      key={img.id}
+                      type="button"
+                      className={styles.moreItem}
+                      onClick={() => {
+                        setMoreOpen(false)
+                        onPreviewImage(img.name, img.url, img.id, img.storyboardId ?? item.id, img.category ?? null, img.description, img.prompt)
+                      }}
+                      aria-label={`预览 ${img.name}`}
+                      title={img.name}
+                    >
+                      <img className={styles.moreItemImg} src={img.thumbnailUrl ?? img.url} alt={img.name} />
+                      <div className={styles.moreItemName}>{img.name}</div>
+                    </button>
+                  ))}
+                </div>
+                {moreKind !== "background" ? (
+                  <div className={styles.moreFooter}>
+                    <button
+                      type="button"
+                      className={styles.moreAddBtn}
+                      onClick={() => {
+                        setMoreOpen(false)
+                        const firstName = (moreList[0]?.name ?? "").trim() || moreLabel
+                        onPickAsset({ storyboardId: item.id, category: moreKind, title: `镜头${item.scene_no}-${moreLabel}`, entityName: firstName })
+                      }}
+                    >
+                      添加素材
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   )
 }

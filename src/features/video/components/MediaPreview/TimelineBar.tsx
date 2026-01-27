@@ -10,6 +10,7 @@ type Props = {
   thumbnails: Thumbnail[]
   onThumbnailClick: (id: string) => void
   timelineSegments: TimelineSegment[]
+  segmentFirstFrames?: Record<string, string>
   timelineKey?: string
   initialTimeline?: { videoClips: any[]; audioClips: any[] } | null
   onTimelineChange?: (timeline: { videoClips: any[]; audioClips: any[] }) => void
@@ -32,6 +33,7 @@ export function TimelineBar({
   thumbnails,
   onThumbnailClick,
   timelineSegments,
+  segmentFirstFrames,
   timelineKey,
   initialTimeline,
   onTimelineChange,
@@ -59,6 +61,7 @@ export function TimelineBar({
             segments={timelineSegments}
             activeId={activeId}
             onSelectSegment={onThumbnailClick}
+            segmentFirstFrames={segmentFirstFrames}
             timelineKey={timelineKey}
             initialTimeline={initialTimeline as any}
             onTimelineChange={onTimelineChange as any}

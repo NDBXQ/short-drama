@@ -1,14 +1,57 @@
 
 .main {
-  display: grid;
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.gridFrame {
+  padding: 16px 16px 8px;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  display: flex;
 }
 
 .grid {
+  --workspace-sidebar-width: 420px;
   display: grid;
-  grid-template-columns: 200px 360px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 200px minmax(0, 1fr) 8px var(--workspace-sidebar-width);
+  column-gap: 8px;
+  row-gap: 24px;
   align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.resizeHandle {
+  position: relative;
+  width: 8px;
+  cursor: col-resize;
+  border-radius: 999px;
+  background: transparent;
+  touch-action: none;
+}
+
+.resizeHandle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.10);
+}
+
+.resizeHandle:hover::after {
+  background: rgba(79, 70, 229, 0.35);
+}
+
+.resizeHandleActive::after {
+  background: rgba(79, 70, 229, 0.55);
 }
 
 .modalOverlay {
@@ -77,5 +120,9 @@
 @media (max-width: 980px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .resizeHandle {
+    display: none;
   }
 }

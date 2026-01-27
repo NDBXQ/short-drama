@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ReactElement } from "react"
+import { CircleHelp, Home, Library, LogIn, LogOut, NotebookPen, UserRound, Video } from "lucide-react"
 import { appNavItems } from "@/shared/navigation"
 import styles from "./AppHeader.module.css"
 
@@ -62,11 +63,6 @@ export function AppHeader({ variant = "app" }: AppHeaderProps): ReactElement {
     return me.data.user.account
   }, [me])
 
-  const avatarText = useMemo(() => {
-    if (!displayAccount) return "U"
-    return displayAccount.trim().slice(0, 1).toUpperCase()
-  }, [displayAccount])
-
   /**
    * 退出登录并跳转到登录页
    * @returns {Promise<void>} 无返回值
@@ -87,11 +83,9 @@ export function AppHeader({ variant = "app" }: AppHeaderProps): ReactElement {
   return (
     <header className={styles.header}>
       <div className={`${styles.inner} ${variant === "auth" ? styles.innerNoNav : ""}`}>
-        <Link href="/" className={styles.brand} aria-label="AI 视频创作平台">
-          <span className={styles.brandIcon} aria-hidden="true" />
-          <span className={styles.brandText}>
-            <span className={styles.brandTitle}>AI视频创作平台</span>
-            <span className={styles.brandSubtitle}>AI VIDEO CREATOR</span>
+        <Link href="/" className={styles.brand} aria-label="AI 视频创作平台" title="AI 视频创作平台">
+          <span className={styles.brandIcon} aria-hidden="true">
+            <Video size={20} strokeWidth={2.2} />
           </span>
         </Link>
 
@@ -102,41 +96,50 @@ export function AppHeader({ variant = "app" }: AppHeaderProps): ReactElement {
                 key={item.href}
                 href={item.href}
                 className={`${styles.navItem} ${isActive(item.href) ? styles.navItemActive : ""}`}
+                aria-label={item.label}
+                title={item.label}
               >
-                {item.label}
+                {item.href === "/" ? (
+                  <Home size={20} strokeWidth={2.2} />
+                ) : item.href.startsWith("/script") ? (
+                  <NotebookPen size={20} strokeWidth={2.2} />
+                ) : item.href.startsWith("/video") ? (
+                  <Video size={20} strokeWidth={2.2} />
+                ) : (
+                  <Library size={20} strokeWidth={2.2} />
+                )}
               </Link>
             ))}
           </nav>
         ) : null}
 
         <div className={styles.actions}>
-          <Link href="/help" className={styles.actionLink}>
-            帮助中心
+          <Link href="/help" className={styles.actionLink} aria-label="帮助中心" title="帮助中心">
+            <CircleHelp size={20} strokeWidth={2.2} />
           </Link>
           {variant === "app" ? (
             <>
               {displayAccount ? (
                 <>
-                  <span className={styles.account} aria-label="当前账号">
-                    {displayAccount}
-                  </span>
                   <button
                     type="button"
                     className={`${styles.actionButton} ${styles.logout}`}
                     onClick={onLogout}
                     disabled={loggingOut}
+                    aria-label="退出登录"
+                    title={loggingOut ? "退出中…" : "退出登录"}
                   >
-                    {loggingOut ? "退出中..." : "退出登录"}
+                    <LogOut size={20} strokeWidth={2.2} />
                   </button>
+                  <span className={styles.account} aria-label="当前账号" title={displayAccount}>
+                    <UserRound size={20} strokeWidth={2.2} />
+                  </span>
                 </>
               ) : (
-                <Link href="/login" className={styles.actionLink}>
-                  去登录
+                <Link href="/login" className={styles.actionLink} aria-label="去登录" title="去登录">
+                  <LogIn size={20} strokeWidth={2.2} />
                 </Link>
               )}
-              <span className={styles.avatar} aria-label="用户头像">
-                {avatarText}
-              </span>
             </>
           ) : null}
         </div>

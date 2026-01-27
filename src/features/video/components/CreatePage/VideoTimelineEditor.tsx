@@ -13,6 +13,7 @@ export function VideoTimelineEditor({
   segments,
   activeId,
   onSelectSegment,
+  segmentFirstFrames,
   timelineKey,
   initialTimeline,
   onTimelineChange,
@@ -23,6 +24,7 @@ export function VideoTimelineEditor({
   segments: TimelineSegment[]
   activeId: string
   onSelectSegment: (id: string) => void
+  segmentFirstFrames?: Record<string, string>
   timelineKey?: string
   initialTimeline?: { videoClips: VideoClip[]; audioClips: AudioClip[] } | null
   onTimelineChange?: (timeline: { videoClips: VideoClip[]; audioClips: AudioClip[] }) => void
@@ -113,6 +115,7 @@ export function VideoTimelineEditor({
       videoClips={videoClips}
       audioClips={audioClips}
       activeId={activeId}
+      segmentFirstFrames={segmentFirstFrames}
       selectedClip={selectedClip}
       totalSeconds={totalSeconds}
       widthPx={widthPx}

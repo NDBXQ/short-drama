@@ -4,7 +4,7 @@ import { getDb } from "coze-coding-dev-sdk"
 import { makeApiErr, makeApiOk } from "@/shared/api"
 import { logger } from "@/shared/logger"
 import { getTraceId } from "@/shared/trace"
-import { stories, storyOutlines, storyboards } from "@/shared/schema"
+import { generatedAudios, stories, storyOutlines, storyboards, ttsSpeakerSamples } from "@/shared/schema"
 
 /**
  * 获取 stories 与 story_outlines 表结构（列清单）
@@ -90,7 +90,7 @@ export async function POST(req: Request): Promise<Response> {
   })
 
   try {
-    const db = await getDb({ stories, storyOutlines, storyboards })
+    const db = await getDb({ stories, storyOutlines, storyboards, generatedAudios, ttsSpeakerSamples })
 
     await db.execute(sql`
       ALTER TABLE story_outlines
@@ -210,6 +210,35 @@ export async function POST(req: Request): Promise<Response> {
         thumbnail_storage_key text,
         category text NOT NULL DEFAULT 'reference',
         prompt text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `)
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS generated_audios (
+        id text PRIMARY KEY DEFAULT gen_random_uuid(),
+        story_id text NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+        storyboard_id text REFERENCES storyboards(id) ON DELETE CASCADE,
+        role_name text NOT NULL,
+        speaker_id text NOT NULL,
+        speaker_name text NOT NULL,
+        content text NOT NULL,
+        url text NOT NULL,
+        storage_key text NOT NULL,
+        audio_size integer NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `)
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tts_speaker_samples (
+        id text PRIMARY KEY DEFAULT gen_random_uuid(),
+        speaker_id text NOT NULL UNIQUE,
+        speaker_name text NOT NULL,
+        sample_text text NOT NULL,
+        url text NOT NULL,
+        storage_key text NOT NULL,
+        audio_size integer NOT NULL DEFAULT 0,
         created_at timestamptz NOT NULL DEFAULT now()
       )
     `)

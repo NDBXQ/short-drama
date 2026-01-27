@@ -3,6 +3,8 @@ import { logger } from "@/shared/logger"
 import type { ApiErr, ApiOk } from "@/shared/api"
 import type { StoryboardItem } from "@/features/video/types"
 import { createLocalPreviewSvg, clampInt } from "../utils/previewUtils"
+import { clearClientLock, readClientLock, writeClientLock } from "../utils/generationLocks"
+import { buildReferenceImages, type ActivePreviews } from "../utils/referenceImages"
 
 type UseGenerationActionsProps = {
   activeStoryboardId: string
@@ -21,7 +23,7 @@ type UseGenerationActionsProps = {
     role: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null }>
     background: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null }>
     item: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null }>
-  }
+  } | ActivePreviews
   storyboardMode: "首帧" | "尾帧" | "首尾帧"
   durationSeconds: string
   hasExistingVideo: boolean
@@ -58,86 +60,10 @@ export function useGenerationActions({
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
 
-  const lockIsFresh = (startedAt: number, ttlMs: number) => Number.isFinite(startedAt) && startedAt > 0 && Date.now() - startedAt < ttlMs
-
-  const readLock = (key: string, ttlMs: number): boolean => {
-    if (typeof window === "undefined") return false
-    try {
-      const raw = window.localStorage.getItem(key)
-      if (!raw) return false
-      const parsed = JSON.parse(raw) as { startedAt?: number }
-      const startedAt = Number(parsed?.startedAt ?? 0)
-      if (!lockIsFresh(startedAt, ttlMs)) {
-        window.localStorage.removeItem(key)
-        return false
-      }
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const writeLock = (key: string) => {
-    if (typeof window === "undefined") return
-    try {
-      window.localStorage.setItem(key, JSON.stringify({ startedAt: Date.now() }))
-    } catch {}
-  }
-
-  const clearLock = (key: string) => {
-    if (typeof window === "undefined") return
-    try {
-      window.localStorage.removeItem(key)
-    } catch {}
-  }
-
   useEffect(() => {
-    setIsGeneratingImage(readLock(imageLockKey, 20 * 60 * 1000))
-    setIsGeneratingVideo(readLock(videoLockKey, 60 * 60 * 1000))
+    setIsGeneratingImage(readClientLock(imageLockKey, 20 * 60 * 1000))
+    setIsGeneratingVideo(readClientLock(videoLockKey, 60 * 60 * 1000))
   }, [imageLockKey, videoLockKey])
-
-  const pickPreview = (list: Array<{ name: string; url: string; thumbnailUrl?: string | null }>, name: string) => {
-    const key = name.trim()
-    if (!key) return null
-    const exact = list.find((p) => p.name === key)
-    if (exact) return exact
-    const include = list.find((p) => key.includes(p.name) || p.name.includes(key))
-    if (include) return include
-    if (list.length === 1) return list[0]
-    return null
-  }
-
-  const buildReferenceImages = () => {
-    const bgList = activePreviews?.background ?? []
-    const roleList = activePreviews?.role ?? []
-    const itemList = activePreviews?.item ?? []
-
-    const out: Array<{ name: string; url: string }> = []
-
-    const bgName = sceneText.trim()
-    if (bgName) {
-      const p = pickPreview(bgList, bgName)
-      if (p?.url) out.push({ name: p.name, url: p.url })
-    }
-
-    for (const r of roles) {
-      const p = pickPreview(roleList, r)
-      if (p?.url) out.push({ name: p.name, url: p.url })
-    }
-
-    for (const it of roleItems) {
-      const p = pickPreview(itemList, it)
-      if (p?.url) out.push({ name: p.name, url: p.url })
-    }
-
-    const seen = new Set<string>()
-    return out.filter((v) => {
-      const k = `${v.name}::${v.url}`
-      if (seen.has(k)) return false
-      seen.add(k)
-      return true
-    })
-  }
 
   const savePrompt = async (kind: "image" | "video") => {
     if (!activeStoryboardId) return
@@ -194,49 +120,87 @@ export function useGenerationActions({
     })
   }
 
-  const handleGenerateImage = async () => {
+  const handleGenerateImage = async (opts?: { mode?: "both" | "tailOnly" }) => {
     if (!activeStoryboardId) return
-    if (isGeneratingImage || readLock(imageLockKey, 20 * 60 * 1000)) return
+    if (isGeneratingImage || readClientLock(imageLockKey, 20 * 60 * 1000)) return
+    const mode = opts?.mode ?? "both"
     setIsGeneratingImage(true)
-    writeLock(imageLockKey)
-    setPreviewImageSrcById((prev) => ({ ...prev, [activeStoryboardId]: createLocalPreviewSvg(`镜 ${activeSceneNo} / 合成中...`) }))
+    writeClientLock(imageLockKey)
     try {
-      await savePrompt("image")
-      const referenceImages = buildReferenceImages()
-      const res = await fetch("/api/video-creation/images/compose", {
+      if (mode === "tailOnly") {
+        const resPrompt = await fetch("/api/video/storyboards", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storyboardId: activeStoryboardId, frames: { last: { prompt: lastImagePrompt } } })
+        })
+        const jsonPrompt = (await resPrompt.json()) as ApiOk<unknown> | ApiErr
+        if (!resPrompt.ok || !jsonPrompt || (jsonPrompt as ApiErr).ok === false) {
+          const errJson = jsonPrompt as ApiErr
+          throw new Error(errJson?.error?.message ?? `HTTP ${resPrompt.status}`)
+        }
+      } else {
+        await savePrompt("image")
+        setPreviewImageSrcById((prev) => ({ ...prev, [activeStoryboardId]: createLocalPreviewSvg(`镜 ${activeSceneNo} / 合成中...`) }))
+      }
+      const referenceImages = buildReferenceImages({ activePreviews: activePreviews as any, sceneText, roles, roleItems })
+      const res = await fetch(mode === "tailOnly" ? "/api/video-creation/images/compose-tail" : "/api/video-creation/images/compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ storyboardId: activeStoryboardId, referenceImages })
       })
-      const json = (await res.json()) as ApiOk<{ image?: { url?: string; thumbnailUrl?: string | null }; lastImage?: { url?: string; thumbnailUrl?: string | null } }> | ApiErr
+      const json = (await res.json()) as ApiOk<any> | ApiErr
       if (!res.ok || !json || (json as ApiErr).ok === false) {
         const errJson = json as ApiErr
         throw new Error(errJson?.error?.message ?? `HTTP ${res.status}`)
       }
-      const okJson = json as ApiOk<{ image?: { url?: string; thumbnailUrl?: string | null }; lastImage?: { url?: string; thumbnailUrl?: string | null } }>
-      const imageUrl = okJson.data.image?.url ?? okJson.data.image?.thumbnailUrl ?? ""
-      if (!imageUrl) throw new Error("合成成功但缺少图片 URL")
-      setPreviewImageSrcById((prev) => ({ ...prev, [activeStoryboardId]: imageUrl }))
-      const lastUrl = okJson.data.lastImage?.url ?? okJson.data.lastImage?.thumbnailUrl ?? ""
-      setItems((prev) =>
-        prev.map((it) => {
-          if (it.id !== activeStoryboardId) return it
-          return {
-            ...it,
-            frames: {
-              ...it.frames,
-              first: { ...(it.frames?.first ?? {}), url: okJson.data.image?.url ?? it.frames?.first?.url ?? null, thumbnailUrl: okJson.data.image?.thumbnailUrl ?? it.frames?.first?.thumbnailUrl ?? null },
-              ...(lastUrl ? { last: { ...(it.frames?.last ?? {}), url: okJson.data.lastImage?.url ?? it.frames?.last?.url ?? null, thumbnailUrl: okJson.data.lastImage?.thumbnailUrl ?? it.frames?.last?.thumbnailUrl ?? null } } : {})
+      const okJson = json as ApiOk<any>
+      if (mode === "tailOnly") {
+        const last = okJson.data?.lastImage ?? null
+        const lastUrl = (last?.url ?? last?.thumbnailUrl ?? "").trim()
+        if (!lastUrl) throw new Error("合成成功但缺少尾帧图片 URL")
+        setItems((prev) =>
+          prev.map((it) => {
+            if (it.id !== activeStoryboardId) return it
+            return {
+              ...it,
+              frames: {
+                ...it.frames,
+                last: {
+                  ...(it.frames?.last ?? {}),
+                  url: last?.url ?? it.frames?.last?.url ?? null,
+                  thumbnailUrl: last?.thumbnailUrl ?? it.frames?.last?.thumbnailUrl ?? null
+                }
+              }
             }
-          }
-        })
-      )
-      clearLock(imageLockKey)
+          })
+        )
+      } else {
+        const imageUrl = okJson.data.image?.url ?? okJson.data.image?.thumbnailUrl ?? ""
+        if (!imageUrl) throw new Error("合成成功但缺少图片 URL")
+        setPreviewImageSrcById((prev) => ({ ...prev, [activeStoryboardId]: imageUrl }))
+        const lastUrl = okJson.data.lastImage?.url ?? okJson.data.lastImage?.thumbnailUrl ?? ""
+        setItems((prev) =>
+          prev.map((it) => {
+            if (it.id !== activeStoryboardId) return it
+            return {
+              ...it,
+              frames: {
+                ...it.frames,
+                first: { ...(it.frames?.first ?? {}), url: okJson.data.image?.url ?? it.frames?.first?.url ?? null, thumbnailUrl: okJson.data.image?.thumbnailUrl ?? it.frames?.first?.thumbnailUrl ?? null },
+                ...(lastUrl ? { last: { ...(it.frames?.last ?? {}), url: okJson.data.lastImage?.url ?? it.frames?.last?.url ?? null, thumbnailUrl: okJson.data.lastImage?.thumbnailUrl ?? it.frames?.last?.thumbnailUrl ?? null } } : {})
+              }
+            }
+          })
+        )
+      }
+      clearClientLock(imageLockKey)
     } catch (e) {
       const anyErr = e as { message?: string }
-      setPreviewImageSrcById((prev) => ({ ...prev, [activeStoryboardId]: createLocalPreviewSvg(`镜 ${activeSceneNo} / 合成失败`) }))
+      if ((opts?.mode ?? "both") !== "tailOnly") {
+        setPreviewImageSrcById((prev) => ({ ...prev, [activeStoryboardId]: createLocalPreviewSvg(`镜 ${activeSceneNo} / 合成失败`) }))
+      }
       alert(anyErr?.message ?? "合成失败")
-      clearLock(imageLockKey)
+      clearClientLock(imageLockKey)
     } finally {
       setIsGeneratingImage(false)
     }
@@ -244,9 +208,9 @@ export function useGenerationActions({
 
   const handleGenerateVideo = async () => {
     if (!activeStoryboardId) return
-    if (isGeneratingVideo || readLock(videoLockKey, 60 * 60 * 1000)) return
+    if (isGeneratingVideo || readClientLock(videoLockKey, 60 * 60 * 1000)) return
     setIsGeneratingVideo(true)
-    writeLock(videoLockKey)
+    writeClientLock(videoLockKey)
     setPreviewVideoSrcById((prev) => ({ ...prev, [activeStoryboardId]: createLocalPreviewSvg(`镜 ${activeSceneNo} / 生成中...`) }))
     try {
       await savePrompt("video")
@@ -261,7 +225,7 @@ export function useGenerationActions({
         if (firstCandidate && !needsLast) return { first: firstCandidate, last: null }
         if (firstCandidate && needsLast && lastCandidate) return { first: firstCandidate, last: lastCandidate }
 
-        const referenceImages = buildReferenceImages()
+        const referenceImages = buildReferenceImages({ activePreviews: activePreviews as any, sceneText, roles, roleItems })
         const res = await fetch("/api/video-creation/images/compose", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -327,7 +291,7 @@ export function useGenerationActions({
       setItems((prev) =>
         prev.map((it) => (it.id === activeStoryboardId ? { ...it, videoInfo: { ...(it.videoInfo ?? {}), url: videoUrl } } : it))
       )
-      clearLock(videoLockKey)
+      clearClientLock(videoLockKey)
     } catch (e) {
       const anyErr = e as { message?: string }
       logger.error({
@@ -339,7 +303,7 @@ export function useGenerationActions({
         errorMessage: anyErr?.message
       })
       setPreviewVideoSrcById((prev) => ({ ...prev, [activeStoryboardId]: createLocalPreviewSvg(`镜 ${activeSceneNo} / 生成失败`) }))
-      clearLock(videoLockKey)
+      clearClientLock(videoLockKey)
     } finally {
       setIsGeneratingVideo(false)
     }

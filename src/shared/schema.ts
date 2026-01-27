@@ -182,6 +182,34 @@ export const generatedImages = pgTable("generated_images", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 })
 
+export const generatedAudios = pgTable("generated_audios", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  storyId: text("story_id")
+    .notNull()
+    .references(() => stories.id, { onDelete: "cascade" }),
+  storyboardId: text("storyboard_id")
+    .references(() => storyboards.id, { onDelete: "cascade" }),
+  roleName: text("role_name").notNull(),
+  speakerId: text("speaker_id").notNull(),
+  speakerName: text("speaker_name").notNull(),
+  content: text("content").notNull(),
+  url: text("url").notNull(),
+  storageKey: text("storage_key").notNull(),
+  audioSize: integer("audio_size").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+})
+
+export const ttsSpeakerSamples = pgTable("tts_speaker_samples", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  speakerId: text("speaker_id").notNull(),
+  speakerName: text("speaker_name").notNull(),
+  sampleText: text("sample_text").notNull(),
+  url: text("url").notNull(),
+  storageKey: text("storage_key").notNull(),
+  audioSize: integer("audio_size").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+})
+
 export const jobs = pgTable("jobs", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: text("user_id").notNull(),
@@ -220,6 +248,8 @@ export type Story = typeof stories.$inferSelect
 export type StoryOutline = typeof storyOutlines.$inferSelect
 export type Storyboard = typeof storyboards.$inferSelect
 export type GeneratedImage = typeof generatedImages.$inferSelect
+export type GeneratedAudio = typeof generatedAudios.$inferSelect
+export type TtsSpeakerSample = typeof ttsSpeakerSamples.$inferSelect
 export type Job = typeof jobs.$inferSelect
 export type PublicResource = typeof publicResources.$inferSelect
 

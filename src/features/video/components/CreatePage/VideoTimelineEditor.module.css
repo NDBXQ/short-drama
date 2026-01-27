@@ -1,6 +1,9 @@
 .editor {
   width: 100%;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
 }
 
 .timelineWrap {
@@ -11,6 +14,10 @@
   border-radius: 14px;
   padding: 10px 10px 12px;
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .timelineWrapDragOver {
@@ -23,12 +30,14 @@
   border-radius: 12px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(15, 23, 42, 0.03);
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .timeline {
   position: relative;
   min-height: 168px;
-  padding: 0 0 10px;
+  padding: 0;
 }
 
 .ruler {
@@ -98,12 +107,26 @@
 }
 
 .clipTitle {
+  position: relative;
+  z-index: 2;
   font-size: 12px;
   font-weight: 900;
   color: rgba(15, 23, 42, 0.82);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  pointer-events: none;
+}
+
+.clipThumb {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  clip-path: inset(0 round 10px);
+  background-image: linear-gradient(rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.22)), var(--clip-thumb-url);
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -115,6 +138,7 @@
   height: 36px;
   cursor: ew-resize;
   background: rgba(15, 23, 42, 0.16);
+  z-index: 3;
 }
 
 .clipHandleLeft {
@@ -127,16 +151,10 @@
   border-radius: 0 10px 10px 0;
 }
 
-.dropHint {
-  font-size: 12px;
-  color: rgba(15, 23, 42, 0.55);
-  margin-top: 10px;
-}
-
 .playhead {
   position: absolute;
   top: 0;
-  bottom: 10px;
+  bottom: 0;
   width: 2px;
   background: rgba(79, 70, 229, 0.95);
   transform: translateX(-1px);
@@ -147,7 +165,7 @@
 .playheadHit {
   position: absolute;
   top: 0;
-  bottom: 10px;
+  bottom: 0;
   width: 14px;
   transform: translateX(-7px);
   z-index: 5;

@@ -10,8 +10,9 @@
   grid-template-rows: auto 1fr auto;
   min-width: 0;
   position: sticky;
-  top: 86px;
-  height: calc(100vh - 128px);
+  top: 0;
+  height: 100%;
+  min-height: 0;
 }
 
 .previewHeader {

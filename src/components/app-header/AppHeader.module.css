@@ -3,47 +3,54 @@
   top: 0;
   z-index: 40;
   background: rgba(255, 255, 255, 0.9);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
   backdrop-filter: saturate(180%) blur(10px);
+  height: 100vh;
+  width: 64px;
+  flex: 0 0 64px;
 }
 
 .inner {
-  height: 64px;
-  max-width: none;
+  height: 100%;
+  width: 100%;
   margin: 0;
-  padding: 0 12px;
-  display: grid;
-  grid-template-columns: 260px 1fr 260px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .innerNoNav {
-  grid-template-columns: 1fr auto;
+  justify-content: flex-start;
 }
 
 .brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   text-decoration: none;
   color: inherit;
-  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
 .brandIcon {
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #7b61ff 0%, #5b5ff5 50%, #34d399 140%);
-  box-shadow: 0 8px 20px rgba(109, 94, 247, 0.25);
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(123, 97, 255, 0.22) 0%, rgba(91, 95, 245, 0.2) 55%, rgba(52, 211, 153, 0.14) 140%);
+  color: #4f46e5;
 }
 
 .brandText {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-  min-width: 0;
+  display: none;
 }
 
 .brandTitle {
@@ -64,56 +71,74 @@
 
 .nav {
   display: flex;
-  justify-content: center;
-  gap: 10px;
-  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+  padding: 6px 0;
+  width: 100%;
 }
 
 .navItem {
-  padding: 8px 12px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   text-decoration: none;
-  font-size: 14px;
-  color: #374151;
-  transition: background 120ms ease, color 120ms ease;
+  color: rgba(15, 23, 42, 0.72);
+  display: grid;
+  place-items: center;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  border: 1px solid transparent;
 }
 
 .navItem:hover {
   background: rgba(109, 94, 247, 0.1);
   color: #4f46e5;
+  border-color: rgba(109, 94, 247, 0.16);
 }
 
 .navItemActive {
   background: rgba(109, 94, 247, 0.14);
   color: #4f46e5;
-  font-weight: 600;
+  border-color: rgba(109, 94, 247, 0.22);
 }
 
 .actions {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
+  width: 100%;
 }
 
 .account {
-  font-size: 12px;
-  color: #64748b;
-  max-width: 140px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .actionLink {
   text-decoration: none;
-  font-size: 14px;
-  color: #374151;
-  transition: color 120ms ease;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 .actionLink:hover {
+  background: rgba(109, 94, 247, 0.1);
   color: #4f46e5;
+  border-color: rgba(109, 94, 247, 0.16);
 }
 
 .logout {
@@ -131,6 +156,14 @@
   padding: 0;
   font: inherit;
   cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: rgba(239, 68, 68, 0.06);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 .actionButton:disabled {
@@ -138,25 +171,7 @@
   cursor: not-allowed;
 }
 
-.avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: #111827;
-  background: rgba(109, 94, 247, 0.12);
-  border: 1px solid rgba(109, 94, 247, 0.18);
-}
-
-@media (max-width: 860px) {
-  .inner {
-    grid-template-columns: 1fr auto;
-  }
-
-  .nav {
-    display: none;
-  }
+.actionButton:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.26);
 }

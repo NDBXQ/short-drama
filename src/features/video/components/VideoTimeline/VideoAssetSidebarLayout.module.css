@@ -1,0 +1,167 @@
+.tabBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.splitBlock {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.90);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.splitLabel {
+  display: grid;
+  place-items: center;
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(241, 245, 249, 0.95);
+  color: rgba(15, 23, 42, 0.70);
+  font-size: 12px;
+  font-weight: 900;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 2px;
+  user-select: none;
+}
+
+.splitContent {
+  min-width: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.assetSectionTitle {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.66);
+  min-width: 0;
+}
+
+.uploadBtn {
+  height: 28px;
+  border-radius: 999px;
+  border: 1px dashed rgba(15, 23, 42, 0.20);
+  background: rgba(255, 255, 255, 0.95);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.80);
+  cursor: pointer;
+  user-select: none;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+
+.uploadInput {
+  display: none;
+}
+
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.groupList {
+  display: grid;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.groupCard {
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+.groupHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.groupTag {
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: rgba(37, 99, 235, 0.08);
+  color: rgba(30, 64, 175, 0.95);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.groupMeta {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.55);
+  white-space: nowrap;
+}
+
+.groupChips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.02);
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.emptyHint {
+  height: 28px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.45);
+}
+
