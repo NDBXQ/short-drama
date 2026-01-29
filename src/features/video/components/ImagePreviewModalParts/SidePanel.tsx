@@ -15,6 +15,7 @@ export function SidePanel({
   prompt,
   storyboardId,
   category,
+  frameKind,
   currentSrc,
   setCurrentSrc,
   currentGeneratedImageId,
@@ -25,6 +26,8 @@ export function SidePanel({
   setIsEditing,
   editPrompt,
   setEditPrompt,
+  onReplaceFromLibrary,
+  onStoryboardFrameUpdated,
   onClose
 }: {
   open: boolean
@@ -33,6 +36,7 @@ export function SidePanel({
   prompt?: string | null
   storyboardId?: string | null
   category?: string | null
+  frameKind?: "first" | "last" | null
   currentSrc: string
   setCurrentSrc: (v: string) => void
   currentGeneratedImageId?: string
@@ -43,6 +47,8 @@ export function SidePanel({
   setIsEditing: (v: boolean) => void
   editPrompt: string
   setEditPrompt: (v: string) => void
+  onReplaceFromLibrary?: () => void
+  onStoryboardFrameUpdated?: (p: { storyboardId: string; frameKind: "first" | "last"; url: string; thumbnailUrl: string | null }) => void
   onClose: () => void
 }): ReactElement {
   const [saving, setSaving] = useState(false)
@@ -103,7 +109,8 @@ export function SidePanel({
     }
   }, [currentGeneratedImageId, open])
 
-  const canInpaint = Boolean(confirmedRect && editPrompt.trim() && currentSrc)
+  const canInpaint = Boolean(confirmedRect && editPrompt.trim() && currentSrc && (currentGeneratedImageId || (storyboardId && frameKind)))
+  const canReplaceFromLibrary = Boolean(storyboardId && onReplaceFromLibrary && !saving && !deleting && !regenerating)
 
   return (
     <div className={styles.right}>
@@ -138,30 +145,39 @@ export function SidePanel({
                 setInpaintLoading(true)
                 setInpaintError(null)
                 try {
-                  const res = await fetch("/api/video-creation/images/inpaint", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      imageUrl: currentSrc,
-                      selection: confirmedRect,
-                      storyboardId: storyboardId ?? null,
-                      generatedImageId: currentGeneratedImageId ?? null,
-                      prompt: editPrompt
-                    })
-                  })
+                  const shouldOverwriteGenerated = Boolean(currentGeneratedImageId)
+                  const apiPath = shouldOverwriteGenerated ? "/api/video-creation/images/inpaint" : "/api/video/storyboards/frames/inpaint"
+                  const payload = shouldOverwriteGenerated
+                    ? {
+                        imageUrl: currentSrc,
+                        selection: confirmedRect,
+                        storyboardId: storyboardId ?? null,
+                        generatedImageId: currentGeneratedImageId ?? null,
+                        prompt: editPrompt
+                      }
+                    : {
+                        storyboardId,
+                        frameKind,
+                        imageUrl: currentSrc,
+                        selection: confirmedRect,
+                        prompt: editPrompt
+                      }
+                  const res = await fetch(apiPath, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
                   const json = (await res.json().catch(() => null)) as
-                    | { ok: boolean; data?: { url?: string; generatedImageId?: string }; error?: { message?: string } }
+                    | { ok: boolean; data?: { url?: string; generatedImageId?: string; thumbnailUrl?: string | null }; error?: { message?: string } }
                     | null
                   if (!res.ok || !json?.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
                   const nextUrl = typeof json.data?.url === "string" ? json.data.url : ""
                   if (!nextUrl) throw new Error("生成成功但缺少图片 URL")
                   const nextId = typeof json.data?.generatedImageId === "string" ? json.data.generatedImageId : ""
+                  const nextThumbnailUrl = typeof json.data?.thumbnailUrl === "string" ? json.data.thumbnailUrl : null
                   setCurrentSrc(nextUrl)
                   if (nextId) setCurrentGeneratedImageId(nextId)
                   setConfirmedRect(null)
                   setIsEditing(false)
                   setEditPrompt("")
                   if (storyboardId) window.dispatchEvent(new CustomEvent("video_reference_images_updated", { detail: { storyboardId } }))
+                  if (storyboardId && frameKind && onStoryboardFrameUpdated) onStoryboardFrameUpdated({ storyboardId, frameKind, url: nextUrl, thumbnailUrl: nextThumbnailUrl })
                 } catch (err) {
                   const anyErr = err as { message?: string }
                   setInpaintError(anyErr?.message ?? "生成失败")
@@ -283,6 +299,10 @@ export function SidePanel({
               }}
             >
               {regenerating ? "重新生成中…" : "重新生成"}
+            </button>
+
+            <button type="button" className={styles.secondaryButton} disabled={!canReplaceFromLibrary} onClick={onReplaceFromLibrary}>
+              从素材库替换
             </button>
 
             <div className={styles.panelHint}>后续会在这里增加更多功能，例如下载、复制链接、设置为封面等。</div>

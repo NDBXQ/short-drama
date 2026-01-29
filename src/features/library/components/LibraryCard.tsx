@@ -25,10 +25,10 @@ interface LibraryCardProps {
   onClick?: () => void
   selected?: boolean
   onToggleSelected?: () => void
-  onViewOriginal?: () => void
+  onViewContent?: () => void
 }
 
-export function LibraryCard({ item, view, onClick, selected, onToggleSelected, onViewOriginal }: LibraryCardProps): ReactElement {
+export function LibraryCard({ item, view, onClick, selected, onToggleSelected, onViewContent }: LibraryCardProps): ReactElement {
   const variant = item.scope ?? "my"
   const isList = view === "list"
 
@@ -115,17 +115,17 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
           </div>
         )}
 
-        {variant === "my" && item.type === "storyboard" && onViewOriginal ? (
+        {variant === "my" && onViewContent ? (
           <button
             type="button"
-            className={`${styles.viewOriginalBtn} ${item.specs ? styles.viewOriginalBtnShift : ""}`}
+            className={`${styles.viewContentBtn} ${item.specs ? styles.viewContentBtnShift : ""}`}
             onClick={(e) => {
               e.stopPropagation()
-              onViewOriginal()
+              onViewContent()
             }}
           >
             <Eye size={14} strokeWidth={2} />
-            查看原始内容
+            查看内容
           </button>
         ) : null}
         

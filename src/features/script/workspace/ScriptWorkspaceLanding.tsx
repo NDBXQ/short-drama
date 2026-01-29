@@ -65,14 +65,14 @@ export function ScriptWorkspaceLanding({ entry, mode }: ScriptWorkspaceLandingPr
             </div>
           </nav>
 
-          <section className={previewPanelStyles.preview}>
+          <section className={`${previewPanelStyles.preview} ${styles.previewLanding}`}>
             <div className={previewPanelStyles.previewHeader}>
               <div className={previewPanelStyles.previewTitle}>预览区</div>
               <div className={previewPanelStyles.previewActions}>
                 <div className={previewPanelStyles.previewHint}>新建并生成大纲后展示内容</div>
               </div>
             </div>
-            <article className={previewPanelStyles.markdown}>
+            <article className={`${previewPanelStyles.markdown} ${styles.previewLandingMarkdown}`}>
               <div className={previewPanelStyles.originalEmpty}>请先在右侧新建剧本并生成大纲</div>
             </article>
             <div className={previewPanelStyles.nextStep}>
@@ -80,6 +80,14 @@ export function ScriptWorkspaceLanding({ entry, mode }: ScriptWorkspaceLandingPr
                 <div className={previewPanelStyles.nextStepText}>
                   <div className={previewPanelStyles.nextStepTitle}>下一步：生成分镜文本</div>
                   <div className={previewPanelStyles.nextStepDesc}>生成大纲后才可继续生成分镜文本。</div>
+                </div>
+                <div className={previewPanelStyles.nextStepAction}>
+                  <button type="button" className={previewPanelStyles.nextStepButton} disabled>
+                    一键生成
+                  </button>
+                  <button type="button" className={previewPanelStyles.nextStepButtonSecondary} disabled>
+                    手动生成
+                  </button>
                 </div>
               </div>
             </div>

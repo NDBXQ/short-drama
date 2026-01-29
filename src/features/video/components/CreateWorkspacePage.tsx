@@ -19,7 +19,6 @@ import { ImageParamsSidebar } from "./CreatePage/ImageParamsSidebar"
 import { VideoParamsSidebar } from "./CreatePage/VideoParamsSidebar"
 import { ChipEditModal } from "@/features/video/components/ChipEditModal"
 import { ImagePreviewModal } from "./ImagePreviewModal"
-import { ImageAssetPickerModal } from "./ImagePreview/ImageAssetPickerModal"
 import { uniqueStrings, clampInt } from "../utils/previewUtils"
 import shellStyles from "./ImageCreate/Shell.module.css"
 
@@ -149,11 +148,6 @@ export function CreateWorkspacePage({
   }
 
   const sceneSwitch = useSceneSwitch(items, activeItem?.id)
-  const [assetPicker, setAssetPicker] = useState<{ open: boolean; category: "background" | "role" | "item"; name: string }>({
-    open: false,
-    category: "background",
-    name: ""
-  })
 
   const { prevVideoLastFrameUrl, usePrevVideoLastFrameAsFirst } = usePrevVideoLastFrame({
     items,
@@ -168,52 +162,37 @@ export function CreateWorkspacePage({
 
   return (
     <div className={shellStyles.shell} aria-label="生图/生视频工作台">
-      <ImagePreviewModal
-        open={Boolean(preview)}
-        title={preview?.title ?? ""}
-        imageSrc={preview?.imageSrc ?? ""}
-        generatedImageId={preview?.generatedImageId}
-        storyboardId={preview?.storyboardId ?? activeStoryboardId}
-        category={preview?.category ?? null}
-        frameKind={preview?.frameKind ?? null}
-        description={preview?.description ?? null}
-        prompt={preview?.prompt ?? null}
-        onStoryboardFrameUpdated={(p: { storyboardId: string; frameKind: "first" | "last"; url: string; thumbnailUrl: string | null }) => {
-          const { storyboardId, frameKind, url, thumbnailUrl } = p
-          if (!storyboardId) return
-          if (frameKind === "first") setPreviewImageSrcById((prev) => ({ ...prev, [storyboardId]: url }))
-          setItems((prev) =>
-            prev.map((it) => {
-              if (it.id !== storyboardId) return it
-              const baseFrames = it.frames ?? {}
-              const patch = frameKind === "first" ? { first: { ...(baseFrames.first ?? {}), url, thumbnailUrl } } : { last: { ...(baseFrames.last ?? {}), url, thumbnailUrl } }
-              return { ...it, frames: { ...baseFrames, ...patch } as any }
-            })
-          )
-        }}
-        onClose={() => setPreview(null)}
-      />
-      <ImageAssetPickerModal
-        open={assetPicker.open}
-        title={assetPicker.name}
-        entityName={assetPicker.name}
-        storyboardId={activeStoryboardId}
-        category={assetPicker.category}
-        onPicked={({ url, thumbnailUrl, generatedImageId }) => {
-          window.dispatchEvent(new CustomEvent("video_reference_images_updated", { detail: { storyboardId: activeStoryboardId } }))
-          setPreview({
-            title: assetPicker.name,
-            imageSrc: url,
-            generatedImageId,
-            storyboardId: activeStoryboardId,
-            category: assetPicker.category,
-            description: null,
-            prompt: null,
-            frameKind: null
-          })
-        }}
-        onClose={() => setAssetPicker((p) => ({ ...p, open: false }))}
-      />
+      {preview ? (
+        <ImagePreviewModal
+          key={`${preview.storyboardId ?? activeStoryboardId}:${preview.generatedImageId ?? preview.imageSrc}:${preview.frameKind ?? ""}`}
+          open
+          title={preview.title}
+          imageSrc={preview.imageSrc}
+          generatedImageId={preview.generatedImageId}
+          storyboardId={preview.storyboardId ?? activeStoryboardId}
+          category={preview.category ?? null}
+          frameKind={preview.frameKind ?? null}
+          description={preview.description ?? null}
+          prompt={preview.prompt ?? null}
+          onStoryboardFrameUpdated={(p: { storyboardId: string; frameKind: "first" | "last"; url: string; thumbnailUrl: string | null }) => {
+            const { storyboardId, frameKind, url, thumbnailUrl } = p
+            if (!storyboardId) return
+            if (frameKind === "first") setPreviewImageSrcById((prev) => ({ ...prev, [storyboardId]: url }))
+            setItems((prev) =>
+              prev.map((it) => {
+                if (it.id !== storyboardId) return it
+                const baseFrames = it.frames ?? {}
+                const patch =
+                  frameKind === "first"
+                    ? { first: { ...(baseFrames.first ?? {}), url, thumbnailUrl } }
+                    : { last: { ...(baseFrames.last ?? {}), url, thumbnailUrl } }
+                return { ...it, frames: { ...baseFrames, ...patch } as any }
+              })
+            )
+          }}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
       <CreateWorkspaceMain
         onBack={handleBack}
         activeTab={activeTab}
@@ -251,11 +230,6 @@ export function CreateWorkspacePage({
               items={roleItems}
               setItems={setRoleItems}
               onGenerate={handleGenerateImage}
-              onPickReferenceImage={({ category, name }) => {
-                const n = name.trim()
-                if (!n) return
-                setAssetPicker({ open: true, category, name: n })
-              }}
               onPreviewImage={(title, imageSrc, generatedImageId, storyboardId, category, description, prompt) =>
                 setPreview({ title, imageSrc, generatedImageId, storyboardId: storyboardId ?? activeStoryboardId, category, description, prompt })
               }
@@ -302,6 +276,7 @@ export function CreateWorkspacePage({
               timelineSegments={timelineSegments}
               videoAssetGroups={activeTab === "video" ? videoAssetGroups : undefined}
               timelineKey={storyId ?? "no-story"}
+              storyId={storyId ?? undefined}
               initialTimeline={timelineDraft}
               onTimelineChange={handleTimelineChange}
               storyboardId={activeStoryboardId}

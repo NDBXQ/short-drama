@@ -1,0 +1,262 @@
+.doc {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.toc {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.tocHeader {
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 6px;
+}
+
+.tocTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.tocHint {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.55);
+  line-height: 1.5;
+}
+
+.tocList {
+  padding: 10px 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.tocItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 10px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(15, 23, 42, 0.86);
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tocItem:hover {
+  transform: translateY(-1px);
+  border-color: rgba(109, 94, 247, 0.22);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.tocItemActive {
+  border-color: rgba(109, 94, 247, 0.24);
+  background: rgba(109, 94, 247, 0.12);
+  color: #4f46e5;
+}
+
+.tocDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.18);
+  flex: 0 0 auto;
+}
+
+.tocDotActive {
+  background: linear-gradient(180deg, #7b61ff 0%, #4f46e5 100%);
+}
+
+.content {
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.contentHeader {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pageTitle {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pageTitleText {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+}
+
+.pageSubtitle {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.6);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.quickLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.quickLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  padding: 8px 10px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 900;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(15, 23, 42, 0.9);
+}
+
+.quickLinkPrimary {
+  border-color: rgba(109, 94, 247, 0.22);
+  background: rgba(109, 94, 247, 0.12);
+  color: #4f46e5;
+}
+
+.body {
+  padding: 18px;
+  display: grid;
+  gap: 18px;
+}
+
+.section {
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  padding: 16px 16px;
+}
+
+.h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.75;
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.75;
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.inlineCode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.codeBlock {
+  margin: 10px 0 0;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(15, 23, 42, 0.03);
+  padding: 12px 12px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.callout {
+  border-radius: 14px;
+  border: 1px solid rgba(109, 94, 247, 0.22);
+  background: linear-gradient(180deg, rgba(109, 94, 247, 0.10) 0%, rgba(255, 255, 255, 0.70) 100%);
+  padding: 12px 12px;
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.calloutTitle {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.9);
+}
+
+.calloutText {
+  font-size: 12px;
+  line-height: 1.75;
+  color: rgba(15, 23, 42, 0.82);
+}
+
+.link {
+  color: #4f46e5;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 980px) {
+  .doc {
+    grid-template-columns: 1fr;
+  }
+
+  .toc {
+    position: relative;
+    top: 0;
+  }
+
+  .contentHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .quickLinks {
+    justify-content: flex-start;
+  }
+}
+

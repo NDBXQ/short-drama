@@ -105,6 +105,11 @@ export async function POST(req: Request): Promise<Response> {
     `)
 
     await db.execute(sql`
+      ALTER TABLE stories
+      ADD COLUMN IF NOT EXISTS final_video_url text;
+    `)
+
+    await db.execute(sql`
       DO $$
       BEGIN
         IF (

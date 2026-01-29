@@ -42,6 +42,7 @@ const audioItemSchema = z
   .refine((v) => v.end_time > v.start_time, { message: "audio_config_list.end_time 必须大于 start_time" })
 
 const inputSchema = z.object({
+  storyId: z.string().trim().min(1).max(200),
   video_config_list: z.array(videoItemSchema).default([]),
   audio_config_list: z.array(audioItemSchema).default([])
 })
@@ -116,10 +117,10 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!parsed.success) return NextResponse.json(makeApiErr(traceId, "VALIDATION_FAILED", "参数格式不正确"), { status: 400 })
 
   const token = readEnv("COZE_VIDEO_EDIT_API_TOKEN")
-  const url = readEnv("COZE_VIDEO_EDIT_API_URL") ?? "https://h4y9qnk5qt.coze.site/run"
+  const url = readEnv("VIDEO_EDIT_API_URL") ?? "https://h4y9qnk5qt.coze.site/run"
   if (!token) return NextResponse.json(makeApiErr(traceId, "COZE_NOT_CONFIGURED", "未配置 COZE_VIDEO_EDIT_API_TOKEN"), { status: 500 })
 
-  const timeoutMs = readEnvInt("COZE_REQUEST_TIMEOUT_MS") ?? 120_000
+  const timeoutMs = readEnvInt("REQUEST_TIMEOUT_MS") ?? 120_000
 
   const startedAt = performance.now()
   logger.info({
@@ -252,9 +253,20 @@ export async function POST(req: NextRequest): Promise<Response> {
       durationMs: Math.round(performance.now() - startedAt)
     })
 
+    const resultUrl = (normalized.data.output_video_url ?? normalized.data.final_video_url ?? "").trim()
+    const saved = await db
+      .update(stories)
+      .set({ finalVideoUrl: resultUrl, updatedAt: new Date() })
+      .where(and(eq(stories.id, parsed.data.storyId), eq(stories.userId, userId)))
+      .returning({ id: stories.id })
+
+    if (saved.length === 0) {
+      return NextResponse.json(makeApiErr(traceId, "STORY_NOT_FOUND", "未找到可写入的剧本"), { status: 404 })
+    }
+
     return NextResponse.json(
       makeApiOk(traceId, {
-        output_video_url: normalized.data.output_video_url ?? normalized.data.final_video_url,
+        output_video_url: resultUrl,
         video_meta: normalized.data.video_meta ?? null
       }),
       { status: 200 }

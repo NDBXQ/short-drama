@@ -4,6 +4,7 @@ import { PreviewPane } from "./ImagePreviewModalParts/PreviewPane"
 import { SidePanel } from "./ImagePreviewModalParts/SidePanel"
 import { useImageNaturalSize } from "./ImagePreviewModalParts/useImageNaturalSize"
 import { useSelectionRect } from "./ImagePreviewModalParts/useSelectionRect"
+import { ImageAssetPickerModal } from "./ImagePreview/ImageAssetPickerModal"
 
 type ImagePreviewModalProps = {
   open: boolean
@@ -19,10 +20,23 @@ type ImagePreviewModalProps = {
   onClose: () => void
 }
 
-export function ImagePreviewModal({ open, title, imageSrc, generatedImageId, storyboardId, category, description, prompt, onClose }: ImagePreviewModalProps): ReactElement | null {
-  const [currentSrc, setCurrentSrc] = useState(imageSrc)
-  const [currentGeneratedImageId, setCurrentGeneratedImageId] = useState<string | undefined>(generatedImageId)
+export function ImagePreviewModal({
+  open,
+  title,
+  imageSrc,
+  generatedImageId,
+  storyboardId,
+  category,
+  frameKind,
+  description,
+  prompt,
+  onStoryboardFrameUpdated,
+  onClose
+}: ImagePreviewModalProps): ReactElement | null {
+  const [currentSrc, setCurrentSrc] = useState(() => (imageSrc?.trim() ? imageSrc : ""))
+  const [currentGeneratedImageId, setCurrentGeneratedImageId] = useState<string | undefined>(() => generatedImageId)
   const [editPrompt, setEditPrompt] = useState("")
+  const [replacePickerOpen, setReplacePickerOpen] = useState(false)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const imageSize = useImageNaturalSize(open, currentSrc)
 
@@ -57,17 +71,8 @@ export function ImagePreviewModal({ open, title, imageSrc, generatedImageId, sto
     }
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    selection.setIsEditing(false)
-    selection.setDraftRect(null)
-    selection.setConfirmedRect(null)
-    setCurrentSrc(imageSrc?.trim() ? imageSrc : "")
-    setCurrentGeneratedImageId(generatedImageId)
-    setEditPrompt("")
-  }, [open, imageSrc, generatedImageId])
-
   if (!open) return null
+  const stableStoryboardId = typeof storyboardId === "string" ? storyboardId.trim() : ""
 
   return (
     <div className={styles.overlay} onClick={onClose} role="presentation">
@@ -103,6 +108,7 @@ export function ImagePreviewModal({ open, title, imageSrc, generatedImageId, sto
           prompt={prompt}
           storyboardId={storyboardId ?? null}
           category={category ?? null}
+          frameKind={frameKind ?? null}
           currentSrc={currentSrc}
           setCurrentSrc={setCurrentSrc}
           currentGeneratedImageId={currentGeneratedImageId}
@@ -113,7 +119,29 @@ export function ImagePreviewModal({ open, title, imageSrc, generatedImageId, sto
           setIsEditing={selection.setIsEditing}
           editPrompt={editPrompt}
           setEditPrompt={setEditPrompt}
+          onReplaceFromLibrary={() => setReplacePickerOpen(true)}
+          onStoryboardFrameUpdated={onStoryboardFrameUpdated}
           onClose={onClose}
+        />
+
+        <ImageAssetPickerModal
+          open={replacePickerOpen && Boolean(stableStoryboardId)}
+          title={title}
+          entityName={title}
+          storyboardId={stableStoryboardId}
+          category={(category ?? "background") as any}
+          onPicked={({ url, thumbnailUrl, generatedImageId }) => {
+            setReplacePickerOpen(false)
+            setCurrentSrc(url)
+            setCurrentGeneratedImageId(generatedImageId)
+            selection.setIsEditing(false)
+            selection.setDraftRect(null)
+            selection.setConfirmedRect(null)
+            setEditPrompt("")
+            if (stableStoryboardId) window.dispatchEvent(new CustomEvent("video_reference_images_updated", { detail: { storyboardId: stableStoryboardId } }))
+            if (stableStoryboardId && frameKind && onStoryboardFrameUpdated) onStoryboardFrameUpdated({ storyboardId: stableStoryboardId, frameKind, url, thumbnailUrl })
+          }}
+          onClose={() => setReplacePickerOpen(false)}
         />
       </div>
     </div>

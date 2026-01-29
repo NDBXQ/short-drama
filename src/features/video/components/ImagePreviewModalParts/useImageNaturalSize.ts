@@ -1,33 +1,29 @@
 import { useEffect, useState } from "react"
 
 export function useImageNaturalSize(open: boolean, src: string) {
-  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)
+  const [loaded, setLoaded] = useState<{ url: string; size: { width: number; height: number } | null } | null>(null)
+  const url = open ? (src ?? "").trim() : ""
 
   useEffect(() => {
     if (!open) return
-    const url = (src ?? "").trim()
-    if (!url) {
-      setImageSize(null)
-      return
-    }
+    if (!url) return
     let cancelled = false
     const img = new window.Image()
     img.onload = () => {
       if (cancelled) return
       const width = Number(img.naturalWidth) || 0
       const height = Number(img.naturalHeight) || 0
-      if (width > 0 && height > 0) setImageSize({ width, height })
+      setLoaded({ url, size: width > 0 && height > 0 ? { width, height } : null })
     }
     img.onerror = () => {
       if (cancelled) return
-      setImageSize(null)
+      setLoaded({ url, size: null })
     }
     img.src = url
     return () => {
       cancelled = true
     }
-  }, [open, src])
+  }, [open, url])
 
-  return imageSize
+  return url && loaded?.url === url ? loaded.size : null
 }
-

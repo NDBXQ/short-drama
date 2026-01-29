@@ -56,3 +56,14 @@
 .disabledComposer {
   opacity: 0.75;
 }
+
+.previewLanding {
+  min-height: 0;
+}
+
+.previewLandingMarkdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}

@@ -8,11 +8,11 @@ export const createCozeS3Storage = (): S3Storage => {
     return s3StorageInstance;
   }
 
-  const endpointUrl = readEnv('COZE_BUCKET_ENDPOINT_URL');
-  const bucketName = readEnv('COZE_BUCKET_NAME');
-  const region = readEnv('COZE_BUCKET_REGION') || 'cn-beijing';
-  const accessKey = readEnv('COZE_BUCKET_ACCESS_KEY') || '';
-  const secretKey = readEnv('COZE_BUCKET_SECRET_KEY') || '';
+  const endpointUrl = readEnv('BUCKET_ENDPOINT_URL');
+  const bucketName = readEnv('BUCKET_NAME');
+  const region = readEnv('BUCKET_REGION') || 'cn-beijing';
+  const accessKey = readEnv('BUCKET_ACCESS_KEY') || '';
+  const secretKey = readEnv('BUCKET_SECRET_KEY') || '';
 
   if (!endpointUrl || !bucketName) {
     throw new Error('Missing COZE_BUCKET configuration environment variables');

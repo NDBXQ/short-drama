@@ -128,8 +128,8 @@ export async function POST(req: Request): Promise<Response> {
 
   const { storyboardId } = parsed.data
 
-  const url = readEnv("COZE_PROMPT_API_URL")
-  const token = readEnv("COZE_PROMPT_API_TOKEN")
+  const url = readEnv("PROMPT_API_URL")
+  const token = readEnv("PROMPT_API_TOKEN")
 
   if (!url || !token) {
     return NextResponse.json(makeApiErr(traceId, "COZE_NOT_CONFIGURED", "Coze 提示词生成服务未配置"), {

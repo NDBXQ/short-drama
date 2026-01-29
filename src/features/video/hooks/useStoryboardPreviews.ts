@@ -65,16 +65,35 @@ export function useStoryboardPreviews(params: { storyId?: string; items: Storybo
         setPreviewsById({})
         return
       }
-      const qs = new URLSearchParams({
-        storyId,
-        storyboardIds: storyboardIds.join(","),
-        includeGlobal: "true",
-        limit: "200",
-        offset: "0"
-      })
-      const res = await fetch(`/api/video-creation/images?${qs.toString()}`, { cache: "no-store" })
-      const json = (await res.json()) as { ok: boolean; data?: { items?: any[] } }
-      if (!res.ok || !json?.ok || !json.data?.items || !Array.isArray(json.data.items)) {
+      const effectiveStoryboardIds = storyboardIds.slice(0, 200)
+      const chunks: string[][] = []
+      const chunkSize = 40
+      for (let i = 0; i < effectiveStoryboardIds.length; i += chunkSize) {
+        chunks.push(effectiveStoryboardIds.slice(i, i + chunkSize))
+      }
+
+      const combinedItems: any[] = []
+      try {
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i]!
+          const qs = new URLSearchParams({
+            storyId,
+            storyboardIds: chunk.join(","),
+            includeGlobal: i === 0 ? "true" : "false",
+            limit: "200",
+            offset: "0"
+          })
+          const res = await fetch(`/api/video-creation/images?${qs.toString()}`, { cache: "no-store" })
+          const json = (await res.json().catch(() => null)) as { ok: boolean; data?: { items?: any[] } } | null
+          if (!res.ok || !json?.ok || !Array.isArray(json.data?.items)) continue
+          combinedItems.push(...json.data.items)
+        }
+      } catch {
+        if (!ignore) setPreviewsById({})
+        return
+      }
+
+      if (combinedItems.length === 0) {
         if (!ignore) setPreviewsById({})
         return
       }
@@ -89,7 +108,7 @@ export function useStoryboardPreviews(params: { storyId?: string; items: Storybo
         return cur
       }
 
-      for (const row of json.data.items) {
+      for (const row of combinedItems) {
         const storyboardId = typeof row.storyboardId === "string" ? row.storyboardId : null
         const rawCategory = typeof row.category === "string" ? row.category : "reference"
         const nameRaw = typeof row.name === "string" ? row.name : ""

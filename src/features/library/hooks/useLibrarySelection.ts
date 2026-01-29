@@ -7,13 +7,11 @@ export function useLibrarySelection(scope: Scope, category: string) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [previewItem, setPreviewItem] = useState<LibraryItem | null>(null)
-  const [originalStoryId, setOriginalStoryId] = useState<string | null>(null)
 
   // Reset selection on scope/category change
   useEffect(() => {
     setSelectedIds(new Set())
     setPreviewItem(null)
-    setOriginalStoryId(null)
   }, [category, scope])
 
   const toggleSelected = useCallback((id: string) => {
@@ -51,8 +49,6 @@ export function useLibrarySelection(scope: Scope, category: string) {
     bulkDeleting,
     previewItem,
     setPreviewItem,
-    originalStoryId,
-    setOriginalStoryId,
     toggleSelected,
     clearSelected,
     handleBulkDelete

@@ -25,7 +25,9 @@ type StoryboardTableRowProps = {
     description?: string | null,
     prompt?: string | null
   ) => void
-  onPickAsset: (params: { storyboardId: string; category: "role" | "background" | "item"; title: string; entityName: string }) => void
+  onPickAsset?: (params: { storyboardId: string; category: "role" | "background" | "item"; title: string; entityName: string }) => void
+  onGenerateReferenceImages?: (storyboardId: string) => void
+  refImageGenerating?: boolean
   onOpenEdit: (itemId: string, initialValue: string) => void
   onDelete: (id: string) => void
 }
@@ -38,6 +40,8 @@ export function StoryboardTableRow({
   previews,
   onPreviewImage,
   onPickAsset,
+  onGenerateReferenceImages,
+  refImageGenerating,
   onOpenEdit,
   onDelete
 }: StoryboardTableRowProps): ReactElement {
@@ -157,12 +161,12 @@ export function StoryboardTableRow({
             <img className={`${styles.previewThumbImg} ${styles.previewThumbPlaceholderImg}`} src={placeholderSrc} alt="" />
           </button>
         ) : null}
-        {kind !== "background" ? (
+        {kind !== "background" && onPickAsset ? (
           <button
             type="button"
             className={`${styles.previewThumb} ${styles.previewThumbEmpty}`}
             aria-label={`为镜头 ${item.scene_no} 添加${label}素材`}
-            onClick={() => onPickAsset({ storyboardId: item.id, category: kind, title: `镜头${item.scene_no}-${label}`, entityName: entityTitle })}
+            onClick={() => onPickAsset?.({ storyboardId: item.id, category: kind, title: `镜头${item.scene_no}-${label}`, entityName: entityTitle })}
           >
             +
           </button>
@@ -213,6 +217,25 @@ export function StoryboardTableRow({
                   strokeWidth={2}
                   d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                 />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={styles.actionBtn}
+              title={refImageGenerating ? "参考图生成中…" : "生成参考图"}
+              aria-label="生成参考图"
+              disabled={Boolean(refImageGenerating) || !onGenerateReferenceImages}
+              onClick={() => onGenerateReferenceImages?.(item.id)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v10A2.5 2.5 0 0 1 17 19H7a2.5 2.5 0 0 1-2.5-2.5v-10Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+                <path d="M8 14l2-2 2 2 3-3 3 3" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                <path d="M8.5 9.5h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
               </svg>
             </button>
             <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => onDelete(item.id)} title="删除">
@@ -266,7 +289,7 @@ export function StoryboardTableRow({
                     </button>
                   ))}
                 </div>
-                {moreKind !== "background" ? (
+                {moreKind !== "background" && onPickAsset ? (
                   <div className={styles.moreFooter}>
                     <button
                       type="button"
@@ -274,7 +297,7 @@ export function StoryboardTableRow({
                       onClick={() => {
                         setMoreOpen(false)
                         const firstName = (moreList[0]?.name ?? "").trim() || moreLabel
-                        onPickAsset({ storyboardId: item.id, category: moreKind, title: `镜头${item.scene_no}-${moreLabel}`, entityName: firstName })
+                        onPickAsset?.({ storyboardId: item.id, category: moreKind, title: `镜头${item.scene_no}-${moreLabel}`, entityName: firstName })
                       }}
                     >
                       添加素材

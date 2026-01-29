@@ -55,8 +55,8 @@ export async function POST(req: Request): Promise<Response> {
     })
   }
 
-  const url = readEnv("COZE_OUTLINE_API_URL")
-  const token = readEnv("COZE_OUTLINE_API_TOKEN")
+  const url = readEnv("OUTLINE_API_URL")
+  const token = readEnv("OUTLINE_API_TOKEN")
   if (!url || !token) {
     return NextResponse.json(
       makeApiErr(

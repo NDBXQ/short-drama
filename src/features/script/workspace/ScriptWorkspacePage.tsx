@@ -101,6 +101,12 @@ export function ScriptWorkspacePage({ mode, storyId, outline, outlines }: Script
     }
   }, [activeOutline, generatingStoryboard, router, storyId, setToast])
 
+  const handleManualGenerate = useCallback(() => {
+    if (!activeOutline) return
+    const outlineId = activeOutline.outlineId
+    router.push(`/video?tab=list&storyId=${encodeURIComponent(storyId)}&outlineId=${encodeURIComponent(outlineId)}&autoGenerate=script`)
+  }, [activeOutline, router, storyId])
+
   return (
     <main className={styles.main}>
       <section className={styles.gridFrame}>
@@ -124,6 +130,7 @@ export function ScriptWorkspacePage({ mode, storyId, outline, outlines }: Script
             activeDraft={activeDraft}
             generatingStoryboard={generatingStoryboard}
             handleGenerateStoryboardText={handleGenerateStoryboardText}
+            handleManualGenerate={handleManualGenerate}
           />
 
           <WorkspaceResizeHandle containerRef={gridRef} />

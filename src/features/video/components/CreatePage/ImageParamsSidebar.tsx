@@ -32,7 +32,6 @@ type Props = {
   items: string[]
   setItems: (v: React.SetStateAction<string[]>) => void
   onGenerate: (opts?: { mode?: "both" | "tailOnly" }) => void
-  onPickReferenceImage?: (p: { category: "background" | "role" | "item"; name: string }) => void
   onPreviewImage?: (
     title: string,
     imageSrc: string,
@@ -71,7 +70,6 @@ export function ImageParamsSidebar({
   roles, setRoles,
   items, setItems,
   onGenerate,
-  onPickReferenceImage,
   onPreviewImage,
   previews,
   isGenerating
@@ -211,9 +209,6 @@ export function ImageParamsSidebar({
               if (!p?.url) return
               onPreviewImage?.(p.name, p.url, p.id, p.storyboardId ?? null, p.category ?? null, p.description, p.prompt)
             }}
-            onPick={() => {
-              onPickReferenceImage?.({ category: "background", name: sceneText })
-            }}
           />
         ) : null}
       </ChipGroup>
@@ -231,9 +226,6 @@ export function ImageParamsSidebar({
               onPreview={() => {
                 if (!p?.url) return
                 onPreviewImage?.(name, p.url, p.id, p.storyboardId ?? null, p.category ?? null, p.description, p.prompt)
-              }}
-              onPick={() => {
-                onPickReferenceImage?.({ category: "role", name })
               }}
             />
           )
@@ -253,9 +245,6 @@ export function ImageParamsSidebar({
               onPreview={() => {
                 if (!p?.url) return
                 onPreviewImage?.(name, p.url, p.id, p.storyboardId ?? null, p.category ?? null, p.description, p.prompt)
-              }}
-              onPick={() => {
-                onPickReferenceImage?.({ category: "item", name })
               }}
             />
           )

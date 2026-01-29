@@ -108,14 +108,14 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json(makeApiOk(traceId, { jobId, status: snapshot.status }), { status: 202 })
   }
 
-  const url = readEnv("COZE_SCRIPT_API_URL")
-  const token = readEnv("COZE_SCRIPT_API_TOKEN")
+  const url = readEnv("SCRIPT_API_URL")
+  const token = readEnv("SCRIPT_API_TOKEN")
   if (!url || !token) {
     return NextResponse.json(
       makeApiErr(
         traceId,
         "COZE_NOT_CONFIGURED",
-        "Coze 未配置，请设置 COZE_SCRIPT_API_URL 与 COZE_SCRIPT_API_TOKEN"
+        "Coze 未配置，请设置 SCRIPT_API_URL 与 SCRIPT_API_TOKEN"
       ),
       { status: 500 }
     )

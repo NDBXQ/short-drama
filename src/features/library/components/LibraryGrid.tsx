@@ -6,7 +6,7 @@ interface LibraryGridProps {
   items: LibraryItem[]
   view: "grid" | "list"
   onItemClick?: (item: LibraryItem) => void
-  onViewOriginal?: (item: LibraryItem) => void
+  onViewContent?: (item: LibraryItem) => void
   selectedIds?: Set<string>
   onToggleSelected?: (id: string) => void
 }
@@ -15,7 +15,7 @@ export function LibraryGrid({
   items,
   view,
   onItemClick,
-  onViewOriginal,
+  onViewContent,
   selectedIds,
   onToggleSelected,
 }: LibraryGridProps): ReactElement {
@@ -29,7 +29,7 @@ export function LibraryGrid({
           onClick={() => onItemClick?.(item)}
           selected={selectedIds?.has(item.id)}
           onToggleSelected={onToggleSelected ? () => onToggleSelected(item.id) : undefined}
-          onViewOriginal={onViewOriginal ? () => onViewOriginal(item) : undefined}
+          onViewContent={onViewContent ? () => onViewContent(item) : undefined}
         />
       ))}
     </div>

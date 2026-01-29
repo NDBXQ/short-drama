@@ -1,0 +1,247 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 50;
+}
+
+.modal {
+  position: fixed;
+  inset: 24px;
+  margin: auto;
+  max-width: 1100px;
+  max-height: calc(100dvh - 48px);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 18px 70px rgba(15, 23, 42, 0.28);
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.92);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.closeBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.closeBtn:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 0 16px;
+}
+
+.tab {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.85);
+  color: rgba(15, 23, 42, 0.78);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.tabActive {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.10);
+  color: rgba(30, 64, 175, 0.95);
+}
+
+.subTabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.8);
+  margin-bottom: 10px;
+}
+
+.subTab {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.70);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.subTabActive {
+  background: rgba(37, 99, 235, 0.12);
+  color: rgba(30, 64, 175, 0.95);
+}
+
+.body {
+  padding: 12px 16px 16px 16px;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.8);
+  padding: 12px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.70);
+  margin-bottom: 8px;
+}
+
+.kvRow {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 6px 0;
+}
+
+.kvKey {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.60);
+}
+
+.kvVal {
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.90);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.shotCard {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shotHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.shotTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.shotMeta {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(15, 23, 42, 0.55);
+}
+
+.assetGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.thumb {
+  position: relative;
+  width: 100%;
+  padding-top: 70%;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.03);
+  overflow: hidden;
+}
+
+.thumbImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.linkRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.linkBtn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(15, 23, 42, 0.84);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.linkBtn:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.media {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.muted {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.55);
+  font-weight: 700;
+}

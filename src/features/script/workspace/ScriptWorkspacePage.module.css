@@ -1,24 +1,24 @@
 
 .main {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  gap: 24px;
   flex: 1;
   min-height: 0;
 }
 
 .gridFrame {
-  padding: 16px 16px 8px;
-  box-sizing: border-box;
+  display: flex;
   flex: 1;
   min-height: 0;
-  display: flex;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
 .grid {
   --workspace-sidebar-width: 420px;
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr) 8px var(--workspace-sidebar-width);
-  column-gap: 8px;
+  grid-template-columns: 200px minmax(0, 1fr) 10px var(--workspace-sidebar-width);
+  column-gap: 12px;
   row-gap: 24px;
   align-items: stretch;
   flex: 1;
@@ -27,7 +27,7 @@
 
 .resizeHandle {
   position: relative;
-  width: 8px;
+  width: 10px;
   cursor: col-resize;
   border-radius: 999px;
   background: transparent;

@@ -10,11 +10,11 @@ const ttsResponseSchema = z.object({
 
 export class CozeTtsClient {
   static async synthesize(params: { text: string; speaker: string; traceId: string }): Promise<{ audioUrl: string; audioSize: number }> {
-    const token = readEnv("COZE_TTS_API_TOKEN")
-    const url = readEnv("COZE_TTS_API_URL") ?? "https://22y3kz7f82.coze.site/run"
-    if (!token) throw new ServiceError("COZE_NOT_CONFIGURED", "Coze 未配置，请设置 COZE_TTS_API_TOKEN（URL 可选）")
+    const token = readEnv("TTS_API_TOKEN")
+    const url = readEnv("TTS_API_URL") ?? "https://22y3kz7f82.coze.site/run"
+    if (!token) throw new ServiceError("COZE_NOT_CONFIGURED", "Coze 未配置，请设置 TTS_API_TOKEN（URL 可选）")
 
-    const timeoutMs = readEnvInt("COZE_TTS_REQUEST_TIMEOUT_MS") ?? (readEnvInt("COZE_REQUEST_TIMEOUT_MS") ?? 120_000)
+    const timeoutMs = readEnvInt("COZE_TTS_REQUEST_TIMEOUT_MS") ?? (readEnvInt("REQUEST_TIMEOUT_MS") ?? 120_000)
 
     try {
       const coze = await callCozeRunEndpoint({

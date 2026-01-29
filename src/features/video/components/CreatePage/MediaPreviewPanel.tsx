@@ -31,6 +31,7 @@ type Props = {
   timelineKey?: string
   initialTimeline?: { videoClips: any[]; audioClips: any[] } | null
   onTimelineChange?: (timeline: { videoClips: any[]; audioClips: any[] }) => void
+  storyId?: string
   storyboardId?: string | null
   ttsAudioVersion?: number
 }
@@ -49,6 +50,7 @@ export function MediaPreviewPanel({
   timelineKey,
   initialTimeline,
   onTimelineChange,
+  storyId,
   storyboardId,
   ttsAudioVersion
 }: Props): ReactElement {
@@ -101,19 +103,16 @@ export function MediaPreviewPanel({
     setPreviewAllLocalTime(0)
   }, [])
 
-  const { editedVideoUrl, editingLoading, handleEdit, clearEditedVideo, displayTitleOverride } = useVideoEdit({
+  const { editedVideoUrl, editingLoading, handleEdit, downloadEditedVideo } = useVideoEdit({
     enabled: isVideoTab,
+    storyId,
     segments,
     timelineVideoClips,
     timelineAudioClips,
     stopPreviewAll
   })
 
-  const displayTitle = useMemo(() => {
-    if (displayTitleOverride) return displayTitleOverride
-    if (isVideoTab && activeTimelineVideoClip?.title) return activeTimelineVideoClip.title
-    return activeTitle
-  }, [activeTitle, activeTimelineVideoClip?.title, displayTitleOverride, isVideoTab])
+  const displayTitle = isVideoTab && activeTimelineVideoClip?.title ? activeTimelineVideoClip.title : activeTitle
 
   const previewPlaylist = useMemo(() => 
     calculatePreviewPlaylist(isVideoTab, previewAllActive, segments, timelineVideoClips),
@@ -190,7 +189,7 @@ export function MediaPreviewPanel({
         <div className={styles.previewCard}>
           <VideoPlayer
             mode={mode}
-            activeImageSrc={editedVideoUrl ?? activeImageSrc}
+            activeImageSrc={activeImageSrc}
             activeFrameImages={activeFrameImages}
             activeTitle={displayTitle}
             onOpenFrameImage={onOpenFrameImage}
@@ -204,9 +203,8 @@ export function MediaPreviewPanel({
             timelineVideoClips={timelineVideoClips}
             timelineAudioClips={timelineAudioClips}
             activeVideoClip={activeTimelineVideoClip}
-            disableClipConstraint={Boolean(editedVideoUrl)}
             onRequestVideoEdit={handleEdit}
-            onClearVideoEdit={editedVideoUrl ? clearEditedVideo : undefined}
+            onDownloadVideoEdit={editedVideoUrl ? downloadEditedVideo : undefined}
             videoEditLoading={editingLoading}
             onStopPreviewAll={stopPreviewAll}
             onTogglePreviewAllPlaying={() => setPreviewAllPlaying((v) => !v)}

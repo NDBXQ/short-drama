@@ -46,14 +46,14 @@ export async function POST(req: Request): Promise<Response> {
     })
   }
 
-  const url = readEnv("COZE_REFERENCE_IMAGE_API_URL") ?? DEFAULT_REFERENCE_IMAGE_URL
-  const token = readEnv("COZE_REFERENCE_IMAGE_API_TOKEN")
+  const url = readEnv("REFERENCE_IMAGE_API_URL") ?? DEFAULT_REFERENCE_IMAGE_URL
+  const token = readEnv("REFERENCE_IMAGE_API_TOKEN")
   if (!token) {
     return NextResponse.json(
       makeApiErr(
         traceId,
         "COZE_NOT_CONFIGURED",
-        "Coze 未配置，请设置 COZE_REFERENCE_IMAGE_API_TOKEN（URL 可选）"
+        "Coze 未配置，请设置 REFERENCE_IMAGE_API_TOKEN（URL 可选）"
       ),
       { status: 500 }
     )

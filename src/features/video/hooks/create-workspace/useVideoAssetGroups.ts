@@ -6,10 +6,7 @@ export function useVideoAssetGroups(params: { storyId?: string; enabled: boolean
   const [videoAssetGroups, setVideoAssetGroups] = useState<VideoAssetGroup[]>([])
 
   useEffect(() => {
-    if (!enabled || !storyId) {
-      setVideoAssetGroups([])
-      return
-    }
+    if (!enabled || !storyId) return
     let ignore = false
 
     const runTasksWithConcurrency = async (tasks: Array<() => Promise<void>>, limit: number) => {
@@ -87,6 +84,5 @@ export function useVideoAssetGroups(params: { storyId?: string; enabled: boolean
     }
   }, [enabled, storyId])
 
-  return videoAssetGroups
+  return enabled && storyId ? videoAssetGroups : []
 }
-

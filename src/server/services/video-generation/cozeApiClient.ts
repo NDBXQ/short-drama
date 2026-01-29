@@ -49,14 +49,14 @@ export class CozeVideoClient {
     const { prompt, duration, watermark, first_image, last_image, return_last_frame } = input
     const generateAudio = input.generate_audio ?? input.generateAudio ?? false
     
-    const token = readEnv("COZE_VIDEO_GENERATE_API_TOKEN")
-    const url = readEnv("COZE_VIDEO_GENERATE_API_URL") ?? "https://3f47zmnfcb.coze.site/run"
+    const token = readEnv("VIDEO_GENERATE_API_TOKEN")
+    const url = readEnv("VIDEO_GENERATE_API_URL") ?? "https://3f47zmnfcb.coze.site/run"
     
     if (!token) {
-      throw new ServiceError("COZE_NOT_CONFIGURED", "Coze 未配置，请设置 COZE_VIDEO_GENERATE_API_TOKEN（URL 可选）")
+      throw new ServiceError("COZE_NOT_CONFIGURED", "Coze 未配置，请设置 VIDEO_GENERATE_API_TOKEN（URL 可选）")
     }
 
-    const timeoutMs = readEnvInt("COZE_VIDEO_REQUEST_TIMEOUT_MS") ?? 120_000
+    const timeoutMs = readEnvInt("VIDEO_REQUEST_TIMEOUT_MS") ?? 120_000
 
     try {
       const cozeBody = {

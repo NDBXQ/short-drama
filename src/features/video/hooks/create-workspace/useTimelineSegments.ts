@@ -14,12 +14,17 @@ export function useTimelineSegments(params: {
   return useMemo(() => {
     if (activeTab !== "video") return []
 
+    const isHttpUrl = (v: string | null | undefined) => {
+      const s = typeof v === "string" ? v.trim() : ""
+      return s.startsWith("https://") || s.startsWith("http://")
+    }
+
     if (videoAssetGroups.length > 0) {
       return videoAssetGroups.flatMap((g) =>
         (g.segments ?? []).map((s) => ({
           id: s.id,
           title: `${g.label} ${s.title}`.trim(),
-          videoSrc: (s.videoSrc ?? "").trim() || null,
+          videoSrc: isHttpUrl(s.videoSrc) ? (s.videoSrc ?? "").trim() : null,
           durationSeconds: s.durationSeconds ?? null
         }))
       )
@@ -27,7 +32,9 @@ export function useTimelineSegments(params: {
 
     return items
       .map((it) => {
-        const candidate = (previewVideoSrcById[it.id] ?? it.videoInfo?.url ?? "").trim()
+        const previewCandidate = (previewVideoSrcById[it.id] ?? "").trim()
+        const storedCandidate = (it.videoInfo?.url ?? "").trim()
+        const candidate = isHttpUrl(previewCandidate) ? previewCandidate : isHttpUrl(storedCandidate) ? storedCandidate : ""
         const durationSeconds =
           typeof it.videoInfo?.durationSeconds === "number" && Number.isFinite(it.videoInfo.durationSeconds) && it.videoInfo.durationSeconds > 0
             ? it.videoInfo.durationSeconds
@@ -37,4 +44,3 @@ export function useTimelineSegments(params: {
       .filter((s) => Boolean((s.videoSrc ?? "").trim()))
   }, [activeTab, items, previewVideoSrcById, videoAssetGroups])
 }
-

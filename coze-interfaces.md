@@ -24,7 +24,7 @@
 
 ### 2.1 故事大纲生成（Outline）
 
-- **调用点**：`POST /api/coze/storyboard/generate-outline` → `fetch(COZE_OUTLINE_API_URL)`
+- **调用点**：`POST /api/coze/storyboard/generate-outline` → `fetch(OUTLINE_API_URL)`
 - **鉴权**：`Authorization: Bearer ${COZE_API_TOKEN}`
 - **环境变量**
   - `COZE_API_URL`
@@ -83,11 +83,11 @@
 
 ### 2.3 分镜脚本生成（Video Script）
 
-- **调用点**：`POST /api/coze/storyboard/generate-script` → `fetch(COZE_SCRIPT_API_URL)`
-- **鉴权**：`Authorization: Bearer ${COZE_SCRIPT_API_TOKEN}`
+- **调用点**：`POST /api/coze/storyboard/generate-script` → `fetch(SCRIPT_API_URL)`
+- **鉴权**：`Authorization: Bearer ${SCRIPT_API_TOKEN}`
 - **环境变量**
-  - `COZE_SCRIPT_API_URL`
-  - `COZE_SCRIPT_API_TOKEN`
+  - `SCRIPT_API_URL`
+  - `SCRIPT_API_TOKEN`
 
 **请求体（发往 Coze）**
 
@@ -131,21 +131,21 @@
 
 **C. 测试直连：`/api/internal/test/call-coze-directly`（env 注入）**
 
-- **调用点**：`POST /api/internal/test/call-coze-directly` → `fetch(COZE_PROMPT_API_URL)`
+- **调用点**：`POST /api/internal/test/call-coze-directly` → `fetch(PROMPT_API_URL)`
 - **代码**：[route.ts](file:///Users/bytedance/dev/AI%20Video/src/app/api/internal/test/call-coze-directly/route.ts#L3-L40)
 - **环境变量**
-  - `COZE_PROMPT_API_URL`
-  - `COZE_PROMPT_API_TOKEN`
+  - `PROMPT_API_URL`
+  - `PROMPT_API_TOKEN`
 - **行为**：把请求体原样转发到 Coze，并尝试解析响应为 JSON
 
 ### 2.5 参考图生成（Reference Image）
 
-- **调用点**：业务层直连 `generateImageByCoze()` → `fetch(COZE_REFERENCE_IMAGE_API_URL || default)`
+- **调用点**：业务层直连 `generateImageByCoze()` → `fetch(REFERENCE_IMAGE_API_URL || default)`
 - **代码**：[cozeClient.ts](file:///Users/bytedance/dev/AI%20Video/src/features/video-creation/services/image-generation/cozeClient.ts#L38-L56)
-- **鉴权**：`Authorization: Bearer ${COZE_REFERENCE_IMAGE_API_TOKEN}`
+- **鉴权**：`Authorization: Bearer ${REFERENCE_IMAGE_API_TOKEN}`
 - **环境变量**
-  - `COZE_REFERENCE_IMAGE_API_URL`（缺省：`https://bx3fr9ndvs.coze.site/run`）
-  - `COZE_REFERENCE_IMAGE_API_TOKEN`
+  - `REFERENCE_IMAGE_API_URL`（缺省：`https://bx3fr9ndvs.coze.site/run`）
+  - `REFERENCE_IMAGE_API_TOKEN`
 
 **请求体（发往 Coze）**
 
@@ -162,12 +162,12 @@
 
 ### 2.6 图片合成（Image Compose）
 
-- **调用点**：业务层直连 `composeImage()` → `fetch(COZE_IMAGE_COMPOSE_API_URL)`
+- **调用点**：业务层直连 `composeImage()` → `fetch(IMAGE_COMPOSE_API_URL)`
 - **代码**：[compositionService.ts](file:///Users/bytedance/dev/AI%20Video/src/features/video-creation/services/compositionService.ts#L98-L141)
-- **鉴权**：`Authorization: Bearer ${COZE_IMAGE_COMPOSE_API_TOKEN}`
+- **鉴权**：`Authorization: Bearer ${IMAGE_COMPOSE_API_TOKEN}`
 - **环境变量**
-  - `COZE_IMAGE_COMPOSE_API_URL`
-  - `COZE_IMAGE_COMPOSE_API_TOKEN`
+  - `IMAGE_COMPOSE_API_URL`
+  - `IMAGE_COMPOSE_API_TOKEN`
 
 **请求体（发往 Coze）**
 
@@ -187,12 +187,12 @@
 
 ### 2.7 视频生成（Video Generate）
 
-- **调用点**：integration 直连 `requestCozeVideoGenerate()` → `fetch(COZE_VIDEO_GENERATE_API_URL || default)`
+- **调用点**：integration 直连 `requestCozeVideoGenerate()` → `fetch(VIDEO_GENERATE_API_URL || default)`
 - **代码**：[videoGenerate.ts](file:///Users/bytedance/dev/AI%20Video/src/server/integrations/coze/videoGenerate.ts#L19-L53)
-- **鉴权**：`Authorization: Bearer ${COZE_VIDEO_GENERATE_API_TOKEN}`
+- **鉴权**：`Authorization: Bearer ${VIDEO_GENERATE_API_TOKEN}`
 - **环境变量**
-  - `COZE_VIDEO_GENERATE_API_URL`（缺省：`https://3f47zmnfcb.coze.site/run`）
-  - `COZE_VIDEO_GENERATE_API_TOKEN`
+  - `VIDEO_GENERATE_API_URL`（缺省：`https://3f47zmnfcb.coze.site/run`）
+  - `VIDEO_GENERATE_API_TOKEN`
 
 **请求体（发往 Coze）**
 
@@ -371,11 +371,11 @@
 
 - **封装入口**：`createCozeStorage()`：[storage.ts](file:///Users/bytedance/dev/AI%20Video/src/features/video-creation/services/image-generation/storage.ts#L7-L15)
 - **环境变量**
-  - `COZE_BUCKET_ENDPOINT_URL`
-  - `COZE_BUCKET_ACCESS_KEY`
-  - `COZE_BUCKET_SECRET_KEY`
-  - `COZE_BUCKET_NAME`
-  - `COZE_BUCKET_REGION`
+  - `BUCKET_ENDPOINT_URL`
+  - `BUCKET_ACCESS_KEY`
+  - `BUCKET_SECRET_KEY`
+  - `BUCKET_NAME`
+  - `BUCKET_REGION`
 - **测试连通性**：`GET /api/internal/test/test-bucket-connection`：[route.ts](file:///Users/bytedance/dev/AI%20Video/src/app/api/internal/test/test-bucket-connection/route.ts#L11-L41)
 
 ## 5. 已知差异与注意事项（对接排障必看）
@@ -403,7 +403,7 @@
 - `/api/internal/test/debug-prompt-generation`：[route.ts](file:///Users/bytedance/dev/AI%20Video/src/app/api/internal/test/debug-prompt-generation/route.ts#L3-L4)
 - `/api/internal/test/async-prompt`：[route.ts](file:///Users/bytedance/dev/AI%20Video/src/app/api/internal/test/async-prompt/route.ts#L4-L6)
 
-建议统一迁移为环境变量（例如：`COZE_PROMPT_API_URL/COZE_PROMPT_API_TOKEN`），并避免在日志中输出任何可复用凭证。
+建议统一迁移为环境变量（例如：`PROMPT_API_URL/PROMPT_API_TOKEN`），并避免在日志中输出任何可复用凭证。
 
 ## 6. 环境变量速查表
 
@@ -411,14 +411,14 @@
 |---|---|---|
 | 故事大纲（outline） | `COZE_API_URL` | `COZE_API_TOKEN` |
 | 分镜文本（storyboard_list） | `CREATE_STORYBOARD_TEXT_URL` | `CREATE_STORYBOARD_TEXT_TOKEN` |
-| 分镜脚本（video_script） | `COZE_SCRIPT_API_URL` | `COZE_SCRIPT_API_TOKEN` |
-| Prompt（测试/直连） | `COZE_PROMPT_API_URL` | `COZE_PROMPT_API_TOKEN` |
-| 参考图（reference image） | `COZE_REFERENCE_IMAGE_API_URL` | `COZE_REFERENCE_IMAGE_API_TOKEN` |
-| 图片合成（compose） | `COZE_IMAGE_COMPOSE_API_URL` | `COZE_IMAGE_COMPOSE_API_TOKEN` |
-| 视频生成（video generate） | `COZE_VIDEO_GENERATE_API_URL` | `COZE_VIDEO_GENERATE_API_TOKEN` |
+| 分镜脚本（video_script） | `SCRIPT_API_URL` | `SCRIPT_API_TOKEN` |
+| Prompt（测试/直连） | `PROMPT_API_URL` | `PROMPT_API_TOKEN` |
+| 参考图（reference image） | `REFERENCE_IMAGE_API_URL` | `REFERENCE_IMAGE_API_TOKEN` |
+| 图片合成（compose） | `IMAGE_COMPOSE_API_URL` | `IMAGE_COMPOSE_API_TOKEN` |
+| 视频生成（video generate） | `VIDEO_GENERATE_API_URL` | `VIDEO_GENERATE_API_TOKEN` |
 | 图片合成（测试） | `COZE_IMAGE_API_URL` | `COZE_IMAGE_API_TOKEN` |
 | 视频生成（测试） | `COZE_VIDEO_API_URL` | `COZE_VIDEO_API_TOKEN` |
-| 对象存储（S3） | `COZE_BUCKET_ENDPOINT_URL / COZE_BUCKET_NAME / COZE_BUCKET_REGION` | `COZE_BUCKET_ACCESS_KEY / COZE_BUCKET_SECRET_KEY` |
+| 对象存储（S3） | `BUCKET_ENDPOINT_URL / BUCKET_NAME / BUCKET_REGION` | `BUCKET_ACCESS_KEY / BUCKET_SECRET_KEY` |
 | Workload Identity（仅检测存在） | - | `COZE_WORKLOAD_IDENTITY_API_KEY` |
 
 ## 7. 内部测试路由清单（与 Coze 对接相关）

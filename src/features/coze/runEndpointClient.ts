@@ -116,7 +116,7 @@ export async function callCozeRunEndpoint(input: CallCozeRunEndpointInput): Prom
   data: unknown
   durationMs: number
 }> {
-  const timeoutFromEnv = readEnvInt("COZE_REQUEST_TIMEOUT_MS")
+  const timeoutFromEnv = readEnvInt("REQUEST_TIMEOUT_MS")
   const resolvedTimeoutMs = input.timeoutMs ?? timeoutFromEnv ?? 60_000
   const { traceId, url, token, body, module } = input
   const start = Date.now()

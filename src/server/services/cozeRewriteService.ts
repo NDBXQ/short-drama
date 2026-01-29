@@ -44,12 +44,12 @@ export class CozeRewriteService {
   }): Promise<ReadableStream<Uint8Array>> {
     const { traceId, userId, storyId, outlineSequence, modificationRequirements } = params
 
-    const url = readEnv("COZE_REWRITE_API_URL")
-    const token = readEnv("COZE_REWRITE_API_TOKEN")
+    const url = readEnv("REWRITE_API_URL")
+    const token = readEnv("REWRITE_API_TOKEN")
     if (!url || !token) {
       throw new ServiceError(
         "COZE_NOT_CONFIGURED",
-        "Coze 未配置，请设置 COZE_REWRITE_API_URL 与 COZE_REWRITE_API_TOKEN"
+        "Coze 未配置，请设置 REWRITE_API_URL 与 REWRITE_API_TOKEN"
       )
     }
 
@@ -126,7 +126,7 @@ export class CozeRewriteService {
         })
 
         const timeoutMs =
-          readEnvInt("COZE_REWRITE_REQUEST_TIMEOUT_MS") ?? readEnvInt("COZE_REQUEST_TIMEOUT_MS") ?? 90_000
+          readEnvInt("COZE_REWRITE_REQUEST_TIMEOUT_MS") ?? readEnvInt("REQUEST_TIMEOUT_MS") ?? 90_000
         const controllerAbort = new AbortController()
         const timer = setTimeout(() => controllerAbort.abort(), timeoutMs)
 

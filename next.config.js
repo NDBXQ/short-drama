@@ -14,6 +14,11 @@ const nextConfig = {
         pathname: "/**"
       }
     ]
+  },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ["*.dev.coze.site", "*.coze.site", "*.sandbox-dev.coze-coding.bytedance.net"]
+    }
   }
 }
 

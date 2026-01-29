@@ -6,7 +6,8 @@ import {
   type TimelineSegment,
   type VideoClip,
   type AudioClip,
-  PX_PER_SECOND
+  PX_PER_SECOND,
+  TRACK_OFFSET_PX
 } from "../../utils/timelineUtils"
 
 export function VideoTimelineEditor({
@@ -109,6 +110,24 @@ export function VideoTimelineEditor({
     window.addEventListener("resize", calc)
     return () => window.removeEventListener("resize", calc)
   }, [setViewportSeconds])
+
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      const wantsHorizontal = Boolean(e.deltaX) || Boolean(e.shiftKey && e.deltaY)
+      if (!wantsHorizontal) return
+      const rect = el.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      if (x < TRACK_OFFSET_PX) {
+        e.preventDefault()
+      }
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => {
+      el.removeEventListener("wheel", onWheel as any)
+    }
+  }, [])
 
   return (
     <TimelineRenderer

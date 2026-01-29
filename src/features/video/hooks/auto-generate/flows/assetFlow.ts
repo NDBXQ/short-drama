@@ -11,6 +11,7 @@ interface AssetFlowParams {
   outlineIds: string[]
   outlineIdByStoryboardId: Map<string, string>
   preferredEpisodeId: string
+  generateReferenceImages?: boolean
   runTasksWithConcurrency: (tasks: Array<() => Promise<void>>, concurrency: number) => Promise<void>
   setGenerationStage: (stage: AutoGenerateStage) => void
   setScriptEntityCatalog: (catalog: ScriptEntityCatalog) => void
@@ -24,6 +25,7 @@ export async function runAssetFlow({
   outlineIds,
   outlineIdByStoryboardId,
   preferredEpisodeId,
+  generateReferenceImages = true,
   runTasksWithConcurrency,
   setGenerationStage,
   setScriptEntityCatalog,
@@ -92,7 +94,7 @@ export async function runAssetFlow({
 
   const globalPrompts = Array.from(globalPromptByKey.values())
   setPromptSummary(() => ({ total: assetsItems.length, done: 0, failed: 0 }))
-  setAssetSummary(() => ({ total: globalPrompts.length, done: 0, failed: 0 }))
+  setAssetSummary(() => (generateReferenceImages ? { total: globalPrompts.length, done: 0, failed: 0 } : null))
 
   setEpisodeProgressById((prev) => {
     const next = { ...prev }
@@ -102,7 +104,7 @@ export async function runAssetFlow({
       next[outlineId] = {
         ...next[outlineId],
         prompts: { total: promptTotal, done: 0, failed: 0 },
-        assets: { total: assetTotal, done: 0, failed: 0 }
+        assets: { total: generateReferenceImages ? assetTotal : 0, done: 0, failed: 0 }
       }
     }
     return next
@@ -173,6 +175,7 @@ export async function runAssetFlow({
   }
 
   const runAssetsTask = async () => {
+    if (!generateReferenceImages) return
     if (globalPrompts.length === 0) return
     const batches = chunkArray(globalPrompts, 50)
     for (const batch of batches) {
@@ -216,5 +219,5 @@ export async function runAssetFlow({
     }
   }
 
-  await Promise.allSettled([runPromptsTask(), runAssetsTask()])
+  await Promise.allSettled(generateReferenceImages ? [runPromptsTask(), runAssetsTask()] : [runPromptsTask()])
 }

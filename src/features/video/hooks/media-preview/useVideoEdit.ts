@@ -3,6 +3,7 @@ import type { TimelineAudioClip, TimelineSegment } from "../../utils/mediaPrevie
 
 export function useVideoEdit(params: {
   enabled: boolean
+  storyId?: string
   segments: TimelineSegment[]
   timelineVideoClips: Array<{
     segmentId: string
@@ -16,7 +17,7 @@ export function useVideoEdit(params: {
   timelineAudioClips: TimelineAudioClip[]
   stopPreviewAll: () => void
 }) {
-  const { enabled, segments, timelineVideoClips, timelineAudioClips, stopPreviewAll } = params
+  const { enabled, storyId, segments, timelineVideoClips, timelineAudioClips, stopPreviewAll } = params
   const [editedVideoUrl, setEditedVideoUrl] = useState<string | null>(null)
   const [editingLoading, setEditingLoading] = useState(false)
 
@@ -70,11 +71,15 @@ export function useVideoEdit(params: {
       })
       .filter(Boolean) as Array<{ url: string; start_time: number; end_time: number; timeline_start: number }>
 
-    return { video_config_list, audio_config_list }
-  }, [segments, timelineAudioClips, timelineVideoClips])
+    return { storyId: storyId ?? "", video_config_list, audio_config_list }
+  }, [segments, storyId, timelineAudioClips, timelineVideoClips])
 
   const handleEdit = useCallback(async () => {
     if (!enabled) return
+    if (!storyId?.trim()) {
+      alert("缺少 storyId，无法生成成片")
+      return
+    }
     if (editingLoading) return
     setEditingLoading(true)
     try {
@@ -98,15 +103,17 @@ export function useVideoEdit(params: {
     }
   }, [buildEditPayload, editingLoading, enabled, stopPreviewAll])
 
-  const clearEditedVideo = useCallback(() => {
-    setEditedVideoUrl(null)
-  }, [])
+  const downloadEditedVideo = useCallback(() => {
+    const url = (editedVideoUrl ?? "").trim()
+    if (!url) return
+    const a = document.createElement("a")
+    a.href = url
+    a.target = "_blank"
+    a.rel = "noreferrer"
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }, [editedVideoUrl])
 
-  const displayTitleOverride = useMemo(() => {
-    if (!enabled) return null
-    if (!editedVideoUrl) return null
-    return "成片预览"
-  }, [editedVideoUrl, enabled])
-
-  return { editedVideoUrl, editingLoading, handleEdit, clearEditedVideo, displayTitleOverride }
+  return { editedVideoUrl, editingLoading, handleEdit, downloadEditedVideo }
 }

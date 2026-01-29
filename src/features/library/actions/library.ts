@@ -244,64 +244,7 @@ export async function getStoryOriginalContent(storyId: string): Promise<{
   message?: string
   data?: { id: string; title: string; intro?: string; originalText: string }
 }> {
-  const traceId = getTraceId(new Headers())
-  const start = Date.now()
-
   const parsed = getStoryOriginalSchema.safeParse({ storyId })
   if (!parsed.success) return { success: false, message: "参数不正确" }
-
-  const cookieStore = await cookies()
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value
-  if (!token) return { success: false, message: "未登录或登录已过期" }
-
-  const session = await verifySessionToken(token, traceId)
-  if (!session) return { success: false, message: "未登录或登录已过期" }
-
-  logger.info({
-    event: "library_story_original_get_start",
-    module: "library",
-    traceId,
-    message: "开始读取剧本原始内容",
-    storyId
-  })
-
-  const db = await getDb({ stories })
-  const rows = await db
-    .select({
-      id: stories.id,
-      title: stories.title,
-      storyType: stories.storyType,
-      storyText: stories.storyText,
-      generatedText: stories.generatedText
-    })
-    .from(stories)
-    .where(and(eq(stories.id, storyId), eq(stories.userId, session.userId)))
-    .limit(1)
-
-  if (rows.length === 0) return { success: false, message: "未找到剧本" }
-
-  const row = rows[0]
-  const originalText = (row.generatedText ?? row.storyText ?? "").trim()
-  const intro = (row.storyType ?? "") === "brief" ? (row.storyText ?? "").trim() : ""
-
-  logger.info({
-    event: "library_story_original_get_success",
-    module: "library",
-    traceId,
-    message: "读取剧本原始内容成功",
-    durationMs: Date.now() - start,
-    storyId,
-    originalChars: originalText.length,
-    introChars: intro.length
-  })
-
-  return {
-    success: true,
-    data: {
-      id: row.id,
-      title: row.title || "未命名",
-      intro: intro || undefined,
-      originalText
-    }
-  }
+  return { success: false, message: "该接口已下线，请使用“查看内容”弹窗" }
 }

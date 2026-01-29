@@ -40,6 +40,7 @@ export const stories = pgTable("stories", {
   shotStyle: text("style").notNull().default("cinema"),
   storyText: text("story_text").notNull(),
   generatedText: text("generated_text"),
+  finalVideoUrl: text("final_video_url"),
   status: text("status").notNull().default("draft"),
   progressStage: text("progress_stage").notNull().default("outline"),
   metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),

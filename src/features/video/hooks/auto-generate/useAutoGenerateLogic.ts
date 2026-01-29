@@ -34,9 +34,9 @@ export function useAutoGenerateLogic(
     entitySetsRef
   } = state
 
-  const { storyId, outlineById, setItems, reloadShots, generateScriptForItem, runTasksWithConcurrency } = params
+  const { storyId, outlineId, outlineById, setItems, reloadShots, generateScriptForItem, runTasksWithConcurrency } = params
 
-  const handleAutoGenerate = useCallback(async () => {
+  const handleAutoGenerate = useCallback(async (mode: "all" | "script") => {
     if (!outlineById || Object.keys(outlineById).length === 0 || !storyId) return
     setIsAutoGenerating(true)
     setGenerationStage("clearing")
@@ -49,9 +49,14 @@ export function useAutoGenerateLogic(
     setScriptEntityCatalog({ background: [], role: [], item: [] })
     entitySetsRef.current = { background: new Set(), role: new Set(), item: new Set() }
 
-    const payloads = Object.values(outlineById)
-      .map((o) => ({ outlineId: o.id, outline: o.outlineText, original: o.originalText }))
-      .filter((p) => p.outlineId && p.outline && p.original)
+    const payloads =
+      mode === "script" && outlineId
+        ? Object.values(outlineById)
+            .map((o) => ({ outlineId: o.id, outline: o.outlineText, original: o.originalText }))
+            .filter((p) => p.outlineId === outlineId && p.outline && p.original)
+        : Object.values(outlineById)
+            .map((o) => ({ outlineId: o.id, outline: o.outlineText, original: o.originalText }))
+            .filter((p) => p.outlineId && p.outline && p.original)
 
     if (payloads.length === 0) {
       setIsAutoGenerating(false)
@@ -102,12 +107,12 @@ export function useAutoGenerateLogic(
         setEpisodeProgressById
       })
 
-      // 3. Asset Flow
       await runAssetFlow({
         storyId,
         outlineIds,
         outlineIdByStoryboardId,
         preferredEpisodeId,
+        generateReferenceImages: mode === "all",
         runTasksWithConcurrency,
         setGenerationStage,
         setScriptEntityCatalog,
@@ -144,6 +149,7 @@ export function useAutoGenerateLogic(
     activeEpisodeRef,
     entitySetsRef,
     generateScriptForItem,
+    outlineId,
     outlineById,
     reloadShots,
     router,

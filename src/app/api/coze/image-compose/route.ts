@@ -53,14 +53,14 @@ export async function POST(req: Request): Promise<Response> {
     })
   }
 
-  const url = readEnv("COZE_IMAGE_COMPOSE_API_URL")
-  const token = readEnv("COZE_IMAGE_COMPOSE_API_TOKEN")
+  const url = readEnv("IMAGE_COMPOSE_API_URL")
+  const token = readEnv("IMAGE_COMPOSE_API_TOKEN")
   if (!url || !token) {
     return NextResponse.json(
       makeApiErr(
         traceId,
         "COZE_NOT_CONFIGURED",
-        "Coze 未配置，请设置 COZE_IMAGE_COMPOSE_API_URL 与 COZE_IMAGE_COMPOSE_API_TOKEN"
+        "Coze 未配置，请设置 IMAGE_COMPOSE_API_URL 与 IMAGE_COMPOSE_API_TOKEN"
       ),
       { status: 500 }
     )

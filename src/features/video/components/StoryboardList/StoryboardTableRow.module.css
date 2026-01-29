@@ -273,6 +273,11 @@
   color: #1e40af;
 }
 
+.actionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .actionBtn:active {
   transform: translateY(1px);
 }

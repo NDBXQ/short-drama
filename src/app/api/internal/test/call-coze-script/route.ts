@@ -25,8 +25,8 @@ export async function POST(req: Request): Promise<Response> {
   const parsed = inputSchema.safeParse(json)
   if (!parsed.success) return NextResponse.json(makeApiErr(traceId, "VALIDATION_FAILED", "入参格式不正确"), { status: 400 })
 
-  const url = readEnv("COZE_SCRIPT_API_URL")
-  const token = readEnv("COZE_SCRIPT_API_TOKEN")
+  const url = readEnv("SCRIPT_API_URL")
+  const token = readEnv("SCRIPT_API_TOKEN")
   if (!url || !token) return NextResponse.json(makeApiErr(traceId, "COZE_NOT_CONFIGURED", "Coze 脚本服务未配置"), { status: 500 })
 
   logger.info({

@@ -78,10 +78,10 @@ async function runVideoJob(payload: VideoGenerateJobPayload, snapshot: VideoGene
     return
   }
 
-  const token = readEnv("COZE_VIDEO_GENERATE_API_TOKEN")
-  const url = readEnv("COZE_VIDEO_GENERATE_API_URL") ?? "https://3f47zmnfcb.coze.site/run"
+  const token = readEnv("VIDEO_GENERATE_API_TOKEN")
+  const url = readEnv("VIDEO_GENERATE_API_URL") ?? "https://3f47zmnfcb.coze.site/run"
   if (!token) {
-    const msg = "Coze 未配置，请设置 COZE_VIDEO_GENERATE_API_TOKEN（URL 可选）"
+    const msg = "Coze 未配置，请设置 VIDEO_GENERATE_API_TOKEN（URL 可选）"
     const errSnap: VideoGenerateJobSnapshot = { ...cur, status: "error", stage: "error", errorMessage: msg, finishedAt: Date.now() }
     await persistSnapshot(payload.jobId, errSnap, { errorMessage: msg, finished: true })
     return
@@ -92,7 +92,7 @@ async function runVideoJob(payload: VideoGenerateJobPayload, snapshot: VideoGene
 
   let cozeData: unknown
   try {
-    const timeoutMs = readEnvInt("COZE_VIDEO_REQUEST_TIMEOUT_MS") ?? 120_000
+    const timeoutMs = readEnvInt("VIDEO_REQUEST_TIMEOUT_MS") ?? 120_000
     const coze = await callCozeRunEndpoint({
       traceId: payload.traceId,
       url,

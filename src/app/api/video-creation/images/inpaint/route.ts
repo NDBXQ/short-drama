@@ -76,7 +76,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     return NextResponse.json(makeApiErr(traceId, "VALIDATION_FAILED", "缺少 generatedImageId，无法覆盖原图"), { status: 400 })
   }
 
-  const endpoint = process.env.COZE_INPAINT_ENDPOINT?.trim() || "https://k9mq4y5xhb.coze.site/run"
+  const endpoint = process.env.INPAINT_ENDPOINT?.trim() || "https://k9mq4y5xhb.coze.site/run"
   const token = process.env.COZE_INPAINT_TOKEN?.trim()
   if (!token) return NextResponse.json(makeApiErr(traceId, "COZE_TOKEN_MISSING", "缺少 COZE_INPAINT_TOKEN 环境变量"), { status: 500 })
 

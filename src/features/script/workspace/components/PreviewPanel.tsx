@@ -14,6 +14,7 @@ type PreviewPanelProps = Readonly<{
   activeDraft: { content: string } | null
   generatingStoryboard: boolean
   handleGenerateStoryboardText: () => void
+  handleManualGenerate: () => void
 }>
 
 /**
@@ -29,7 +30,8 @@ export function PreviewPanel({
   activeRewrite,
   activeDraft,
   generatingStoryboard,
-  handleGenerateStoryboardText
+  handleGenerateStoryboardText,
+  handleManualGenerate
 }: PreviewPanelProps) {
   return (
     <section className={styles.preview}>
@@ -86,14 +88,24 @@ export function PreviewPanel({
             <div className={styles.nextStepTitle}>下一步：生成分镜文本</div>
             <div className={styles.nextStepDesc}>基于当前大纲生成更细的场景描述与镜头文本，准备进入视频创作。</div>
           </div>
-          <button
-            type="button"
-            className={styles.nextStepButton}
-            onClick={handleGenerateStoryboardText}
-            disabled={!activeOutline || generatingStoryboard}
-          >
-            {generatingStoryboard ? "生成中…" : "生成分镜"}
-          </button>
+          <div className={styles.nextStepAction}>
+            <button
+              type="button"
+              className={styles.nextStepButton}
+              onClick={handleGenerateStoryboardText}
+              disabled={!activeOutline || generatingStoryboard}
+            >
+              {generatingStoryboard ? "生成中…" : "一键生成"}
+            </button>
+            <button
+              type="button"
+              className={styles.nextStepButtonSecondary}
+              onClick={handleManualGenerate}
+              disabled={!activeOutline || generatingStoryboard}
+            >
+              手动生成
+            </button>
+          </div>
         </div>
       </div>
     </section>

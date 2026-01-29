@@ -1,9 +1,8 @@
-import { type ReactElement, useCallback, useState } from "react"
+import { type ReactElement } from "react"
 import type { StoryboardItem } from "../../types"
 import type { ScriptGenerateState } from "../../hooks/useScriptGeneration"
 import styles from "./StoryboardTable.module.css"
 import { StoryboardTableRow } from "./StoryboardTableRow"
-import { ImageAssetPickerModal } from "../ImagePreview/ImageAssetPickerModal"
 
 type StoryboardTableProps = {
   items: StoryboardItem[]
@@ -29,6 +28,8 @@ type StoryboardTableProps = {
     description?: string | null,
     prompt?: string | null
   ) => void
+  onGenerateReferenceImages?: (storyboardId: string) => void
+  refImageGeneratingById?: Record<string, boolean>
   onOpenEdit: (itemId: string, initialValue: string) => void
   onDelete: (id: string) => void
 }
@@ -42,29 +43,12 @@ export function StoryboardTable({
   onSelectAll,
   onSelect,
   onPreviewImage,
+  onGenerateReferenceImages,
+  refImageGeneratingById,
   onOpenEdit,
   onDelete
 }: StoryboardTableProps): ReactElement {
   const showSkeleton = isLoading && items.length === 0
-
-  const [assetPickerOpen, setAssetPickerOpen] = useState(false)
-  const [assetPickerStoryboardId, setAssetPickerStoryboardId] = useState<string | null>(null)
-  const [assetPickerCategory, setAssetPickerCategory] = useState<"role" | "background" | "item">("background")
-  const [assetPickerTitle, setAssetPickerTitle] = useState("")
-  const [assetPickerEntityName, setAssetPickerEntityName] = useState("")
-
-  const openAssetPicker = useCallback((params: { storyboardId: string; category: "role" | "background" | "item"; title: string; entityName: string }) => {
-    setAssetPickerStoryboardId(params.storyboardId)
-    setAssetPickerCategory(params.category)
-    setAssetPickerTitle(params.title)
-    setAssetPickerEntityName(params.entityName)
-    setAssetPickerOpen(true)
-  }, [])
-
-  const closeAssetPicker = useCallback(() => {
-    setAssetPickerOpen(false)
-  }, [])
-
   return (
     <div className={styles.tableContainer}>
       <table className={styles.table}>
@@ -103,28 +87,14 @@ export function StoryboardTable({
                   onSelect={onSelect}
                   previews={previewsById[item.id]}
                   onPreviewImage={onPreviewImage}
-                  onPickAsset={openAssetPicker}
+                  onGenerateReferenceImages={onGenerateReferenceImages}
+                  refImageGenerating={Boolean(refImageGeneratingById?.[item.id])}
                   onOpenEdit={onOpenEdit}
                   onDelete={onDelete}
                 />
               ))}
         </tbody>
       </table>
-
-      {assetPickerStoryboardId ? (
-        <ImageAssetPickerModal
-          open={assetPickerOpen}
-          title={assetPickerTitle}
-          entityName={assetPickerEntityName}
-          storyboardId={assetPickerStoryboardId}
-          category={assetPickerCategory}
-          onPicked={({ url, generatedImageId }) => {
-            window.dispatchEvent(new CustomEvent("video_reference_images_updated", { detail: { storyboardId: assetPickerStoryboardId } }))
-            onPreviewImage(assetPickerTitle, url, generatedImageId, assetPickerStoryboardId, assetPickerCategory, null, null)
-          }}
-          onClose={closeAssetPicker}
-        />
-      ) : null}
     </div>
   )
 }

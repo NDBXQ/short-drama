@@ -59,11 +59,11 @@ export async function generateImageByCoze(
   options?: { traceId?: string; module?: string }
 ): Promise<string> {
   const apiUrl =
-    readEnv("COZE_REFERENCE_IMAGE_API_URL") || "https://bx3fr9ndvs.coze.site/run"
-  const token = readEnv("COZE_REFERENCE_IMAGE_API_TOKEN")
+    readEnv("REFERENCE_IMAGE_API_URL") || "https://bx3fr9ndvs.coze.site/run"
+  const token = readEnv("REFERENCE_IMAGE_API_TOKEN")
   
   if (!token) {
-    throw new Error("缺少环境变量 COZE_REFERENCE_IMAGE_API_URL/COZE_REFERENCE_IMAGE_API_TOKEN")
+    throw new Error("缺少环境变量 REFERENCE_IMAGE_API_URL/REFERENCE_IMAGE_API_TOKEN")
   }
 
   const traceId = options?.traceId ?? "unknown"

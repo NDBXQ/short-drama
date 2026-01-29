@@ -166,12 +166,21 @@ export function ImageAssetPickerModal({
             ) : (
               <div className={styles.grid} aria-label="素材列表">
                 {items.map((it) => (
-                  <div key={it.id} className={styles.tile} role="button" tabIndex={0} onClick={() => void pickFromLibrary(it.id)}>
-                    <span className={styles.grip} aria-hidden />
+                  <button
+                    key={it.id}
+                    className={styles.tile}
+                    type="button"
+                    onClick={() => void pickFromLibrary(it.id)}
+                    disabled={loading}
+                    aria-label={`选择素材：${it.name}`}
+                  >
                     <span className={styles.tileText} title={it.name}>
                       {it.name}
                     </span>
-                  </div>
+                    <span className={styles.thumb} aria-hidden="true">
+                      {it.previewUrl || it.originalUrl ? <img className={styles.thumbImg} src={it.previewUrl || it.originalUrl || ""} alt="" /> : <span className={styles.thumbFallback} />}
+                    </span>
+                  </button>
                 ))}
               </div>
             )

@@ -30,7 +30,8 @@ export function VideoPageClient({
     () => searchParams.get("outlineId") ?? initialOutlineId ?? "",
     [initialOutlineId, searchParams]
   )
-  const autoGenerate = searchParams.get("autoGenerate") === "true"
+  const autoGenerateRaw = searchParams.get("autoGenerate")
+  const autoGenerateMode = autoGenerateRaw === "script" ? "script" : autoGenerateRaw === "true" ? "all" : undefined
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
 
@@ -81,7 +82,7 @@ export function VideoPageClient({
           <StoryboardList
             storyId={urlStoryId || undefined}
             outlineId={urlOutlineId || undefined}
-            autoGenerate={autoGenerate}
+            autoGenerate={autoGenerateMode}
           />
         ) : (
           <StoryboardBoard

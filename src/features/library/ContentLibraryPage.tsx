@@ -11,7 +11,7 @@ import { UploadResourceModal } from "./components/UploadResourceModal"
 import { AiGenerateResourceModal } from "./components/AiGenerateResourceModal"
 import { BulkActionBar } from "./components/BulkActionBar"
 import { PublicResourcePreviewModal } from "./components/PublicResourcePreviewModal"
-import { StoryOriginalContentModal } from "./components/StoryOriginalContentModal"
+import { StoryContentModal } from "./components/StoryContentModal"
 import { ConfirmModal } from "./components/ConfirmModal"
 import { deleteStory } from "./actions/library"
 import { aiGeneratePublicResource } from "./actions/ai-generate"
@@ -44,8 +44,6 @@ export function ContentLibraryPage(): ReactElement {
     clearSelected,
     previewItem,
     setPreviewItem,
-    originalStoryId,
-    setOriginalStoryId,
     bulkDeleting,
     handleBulkDelete
   } = useLibrarySelection(scope, category)
@@ -55,6 +53,7 @@ export function ContentLibraryPage(): ReactElement {
   const [storyDeleteConfirm, setStoryDeleteConfirm] = useState<{ ids: string[] } | null>(null)
   const [storyDeleting, setStoryDeleting] = useState(false)
   const [publicDeleteConfirm, setPublicDeleteConfirm] = useState<{ ids: string[] } | null>(null)
+  const [storyContentItem, setStoryContentItem] = useState<{ id: string; title?: string } | null>(null)
 
   const handleItemClick = useCallback(
     (item: LibraryItem) => {
@@ -165,13 +164,12 @@ export function ContentLibraryPage(): ReactElement {
                       }
                       handleItemClick(item)
                     }}
+                    onViewContent={(item) => {
+                      if (scope !== "my") return
+                      setStoryContentItem({ id: item.id, title: item.title })
+                    }}
                     selectedIds={selectedIds}
                     onToggleSelected={toggleSelected}
-                    onViewOriginal={(item) => {
-                      if (scope !== "my") return
-                      if (item.type !== "storyboard") return
-                      setOriginalStoryId(item.id)
-                    }}
                   />
                 </div>
               </div>
@@ -219,7 +217,12 @@ export function ContentLibraryPage(): ReactElement {
         onClear={clearSelected}
         onDelete={openPublicBulkDeleteConfirm}
       />
-      <StoryOriginalContentModal open={scope === "my" && originalStoryId != null} storyId={originalStoryId} onClose={() => setOriginalStoryId(null)} />
+      <StoryContentModal
+        open={scope === "my" && storyContentItem != null}
+        storyId={storyContentItem?.id ?? null}
+        storyTitle={storyContentItem?.title}
+        onClose={() => setStoryContentItem(null)}
+      />
       <ConfirmModal
         open={scope === "my" && storyDeleteConfirm != null}
         title="删除剧本"

@@ -22,7 +22,7 @@ type Props = {
   activeVideoClip?: TimelineVideoClip | null
   disableClipConstraint?: boolean
   onRequestVideoEdit?: () => void
-  onClearVideoEdit?: () => void
+  onDownloadVideoEdit?: () => void
   videoEditLoading?: boolean
   onStopPreviewAll: () => void
   onTogglePreviewAllPlaying: () => void
@@ -49,7 +49,7 @@ export function VideoPlayer({
   activeVideoClip,
   disableClipConstraint,
   onRequestVideoEdit,
-  onClearVideoEdit,
+  onDownloadVideoEdit,
   videoEditLoading,
   onStopPreviewAll,
   onTogglePreviewAllPlaying,
@@ -134,15 +134,12 @@ export function VideoPlayer({
                 className={styles.previewAllBtnGhost}
                 style={{ pointerEvents: "auto", height: 28, borderRadius: 999, opacity: videoEditLoading ? 0.7 : 1 }}
                 onClick={() => {
-                  if (onClearVideoEdit) {
-                    onClearVideoEdit()
-                    return
-                  }
+                  if (onDownloadVideoEdit) return onDownloadVideoEdit()
                   void onRequestVideoEdit()
                 }}
                 disabled={Boolean(videoEditLoading)}
               >
-                {onClearVideoEdit ? "返回分镜" : videoEditLoading ? "生成中…" : "生成成片"}
+                {onDownloadVideoEdit ? "下载成片" : videoEditLoading ? "生成中…" : "生成成片"}
               </button>
             ) : null}
             {isVideoTab && previewAllActive ? (

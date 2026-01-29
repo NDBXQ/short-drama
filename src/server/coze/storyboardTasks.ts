@@ -32,8 +32,8 @@ export async function runGenerateOutline(input: {
   style?: string
 }): Promise<{ storyId: string; coze: unknown; outlineTotal: number; durationMs: number; cozeStatus: number }> {
   const start = Date.now()
-  const url = readEnv("COZE_OUTLINE_API_URL")
-  const token = readEnv("COZE_OUTLINE_API_TOKEN")
+  const url = readEnv("OUTLINE_API_URL")
+  const token = readEnv("OUTLINE_API_TOKEN")
   if (!url || !token) throw new Error("COZE_NOT_CONFIGURED")
 
   const db = await getDb({ stories, storyOutlines, storyboards })
@@ -312,8 +312,8 @@ export async function runGenerateScript(input: {
   storyboardId?: string
 }): Promise<{ coze: unknown; durationMs: number; cozeStatus: number }> {
   const start = Date.now()
-  const url = readEnv("COZE_SCRIPT_API_URL")
-  const token = readEnv("COZE_SCRIPT_API_TOKEN")
+  const url = readEnv("SCRIPT_API_URL")
+  const token = readEnv("SCRIPT_API_TOKEN")
   if (!url || !token) throw new Error("COZE_NOT_CONFIGURED")
 
   const coze = await callCozeRunEndpoint({

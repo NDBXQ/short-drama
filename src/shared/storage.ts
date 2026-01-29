@@ -6,11 +6,11 @@ let s3Instance: S3Storage | null = null
 export function getS3Storage(): S3Storage {
   if (s3Instance) return s3Instance
 
-  const endpointUrl = readEnv("COZE_BUCKET_ENDPOINT_URL")
-  const bucketName = readEnv("COZE_BUCKET_NAME")
-  const accessKey = readEnv("COZE_BUCKET_ACCESS_KEY")
-  const secretKey = readEnv("COZE_BUCKET_SECRET_KEY")
-  const region = readEnv("COZE_BUCKET_REGION") ?? "cn-beijing"
+  const endpointUrl = readEnv("BUCKET_ENDPOINT_URL")
+  const bucketName = readEnv("BUCKET_NAME")
+  const accessKey = readEnv("BUCKET_ACCESS_KEY")
+  const secretKey = readEnv("BUCKET_SECRET_KEY")
+  const region = readEnv("BUCKET_REGION") ?? "cn-beijing"
 
   if (!endpointUrl || !bucketName || !accessKey || !secretKey) {
     throw new Error("S3 storage not configured")
@@ -32,8 +32,8 @@ export async function uploadPublicFile(
   prefix: string = "public"
 ): Promise<{ url: string; key: string }> {
   const storage = getS3Storage()
-  const bucketName = readEnv("COZE_BUCKET_NAME")
-  const endpointUrl = readEnv("COZE_BUCKET_ENDPOINT_URL")
+  const bucketName = readEnv("BUCKET_NAME")
+  const endpointUrl = readEnv("BUCKET_ENDPOINT_URL")
   if (!bucketName || !endpointUrl) throw new Error("S3 storage not configured")
   const buffer = Buffer.from(await file.arrayBuffer())
   const timestamp = Date.now()
@@ -64,8 +64,8 @@ export async function uploadPublicBuffer(input: {
   prefix?: string
 }): Promise<{ url: string; key: string }> {
   const storage = getS3Storage()
-  const bucketName = readEnv("COZE_BUCKET_NAME")
-  const endpointUrl = readEnv("COZE_BUCKET_ENDPOINT_URL")
+  const bucketName = readEnv("BUCKET_NAME")
+  const endpointUrl = readEnv("BUCKET_ENDPOINT_URL")
   if (!bucketName || !endpointUrl) throw new Error("S3 storage not configured")
 
   const timestamp = Date.now()

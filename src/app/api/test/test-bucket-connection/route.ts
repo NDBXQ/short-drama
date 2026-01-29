@@ -20,11 +20,11 @@ export async function GET(req: Request): Promise<Response> {
   const traceId = getTraceId(req.headers)
   const start = Date.now()
 
-  const endpointUrl = readEnv("COZE_BUCKET_ENDPOINT_URL")
-  const bucketName = readEnv("COZE_BUCKET_NAME")
-  const accessKey = readEnv("COZE_BUCKET_ACCESS_KEY")
-  const secretKey = readEnv("COZE_BUCKET_SECRET_KEY")
-  const region = readEnv("COZE_BUCKET_REGION") ?? "cn-beijing"
+  const endpointUrl = readEnv("BUCKET_ENDPOINT_URL")
+  const bucketName = readEnv("BUCKET_NAME")
+  const accessKey = readEnv("BUCKET_ACCESS_KEY")
+  const secretKey = readEnv("BUCKET_SECRET_KEY")
+  const region = readEnv("BUCKET_REGION") ?? "cn-beijing"
   const workloadToken = readEnv("COZE_WORKLOAD_IDENTITY_API_KEY")
 
   const configured = {
@@ -61,7 +61,7 @@ export async function GET(req: Request): Promise<Response> {
       makeApiErr(
         traceId,
         "S3_NOT_CONFIGURED",
-        "对象存储未配置，请设置 COZE_BUCKET_ENDPOINT_URL/COZE_BUCKET_NAME/COZE_BUCKET_ACCESS_KEY/COZE_BUCKET_SECRET_KEY"
+        "对象存储未配置，请设置 BUCKET_ENDPOINT_URL/BUCKET_NAME/BUCKET_ACCESS_KEY/BUCKET_SECRET_KEY"
       ),
       { status: 500 }
     )

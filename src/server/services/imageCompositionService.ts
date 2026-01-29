@@ -80,10 +80,10 @@ export class ImageCompositionService {
     if (mode === "both" && !prompt) throw new ServiceError("PROMPT_NOT_FOUND", "该分镜缺少首帧提示词")
     if (mode === "tailOnly" && !lastPrompt) throw new ServiceError("PROMPT_NOT_FOUND", "该分镜缺少尾帧提示词")
 
-    const url = readEnv("COZE_IMAGE_COMPOSE_API_URL")
-    const token = readEnv("COZE_IMAGE_COMPOSE_API_TOKEN")
+    const url = readEnv("IMAGE_COMPOSE_API_URL")
+    const token = readEnv("IMAGE_COMPOSE_API_TOKEN")
     if (!url || !token) {
-      throw new ServiceError("COZE_NOT_CONFIGURED", "Coze 未配置，请设置 COZE_IMAGE_COMPOSE_API_URL 与 COZE_IMAGE_COMPOSE_API_TOKEN")
+      throw new ServiceError("COZE_NOT_CONFIGURED", "Coze 未配置，请设置 IMAGE_COMPOSE_API_URL 与 IMAGE_COMPOSE_API_TOKEN")
     }
 
     logger.info({

@@ -10,6 +10,9 @@ import { useScriptGeneration, type ScriptGenerateState } from "../../hooks/useSc
 import { createPreviewSvgDataUrl } from "../../utils/svgUtils"
 import { useStoryboardPreviews } from "../../hooks/useStoryboardPreviews"
 import { useAutoGenerateStoryboards } from "../../hooks/useAutoGenerateStoryboards"
+import { fetchStoryboards, generateStoryboardPrompts } from "../../api/generation"
+import { extractReferenceImagePrompts } from "../../utils/referenceImagePrompts"
+import { startReferenceImageJob, waitReferenceImageJob } from "../../utils/referenceImageAsync"
 import { StoryboardSidebar } from "./StoryboardSidebar"
 import { StoryboardToolbar } from "./StoryboardToolbar"
 import { StoryboardTable } from "./StoryboardTable"
@@ -21,7 +24,7 @@ type StoryboardListProps = {
   initialItems?: StoryboardItem[]
   storyId?: string
   outlineId?: string
-  autoGenerate?: boolean
+  autoGenerate?: "all" | "script"
 }
 
 export function StoryboardList({
@@ -85,6 +88,7 @@ export function StoryboardList({
   const [editTextSaving, setEditTextSaving] = useState(false)
   const [editTextError, setEditTextError] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [refImageGeneratingById, setRefImageGeneratingById] = useState<Record<string, boolean>>({})
   const { isAutoGenerating, generationStage, generationEpisodeId, textBatchMeta, scriptSummary, promptSummary, assetSummary, episodeProgressById } = useAutoGenerateStoryboards({
     autoGenerate,
     storyId: initialStoryId,
@@ -145,6 +149,60 @@ export function StoryboardList({
 
   const closePreview = () => setPreview(null)
 
+  const triggerGenerateForStoryboard = async (storyboardId: string, storyboardText: string) => {
+    const base = items.find((it) => it.id === storyboardId)
+    if (!base) return
+    const patched = { ...base, storyboard_text: storyboardText }
+    const script = await generateScriptForItem(patched)
+    if (!script) return
+
+    await generateStoryboardPrompts(storyboardId)
+
+    if (storyId && activeEpisode) {
+      const latest = await fetchStoryboards(storyId, activeEpisode)
+      const next = latest.find((it) => it.id === storyboardId)
+      if (next) {
+        updateItemById(storyboardId, (prev) => ({
+          ...prev,
+          frames: next.frames,
+          videoInfo: next.videoInfo ?? prev.videoInfo,
+          scriptContent: next.scriptContent ?? prev.scriptContent
+        }))
+      }
+    }
+  }
+
+  const handleGenerateReferenceImages = async (storyboardId: string) => {
+    if (!storyId) return
+    if (refImageGeneratingById[storyboardId]) return
+    setRefImageGeneratingById((prev) => ({ ...prev, [storyboardId]: true }))
+    try {
+      const base = items.find((it) => it.id === storyboardId)
+      if (!base) return
+
+      const script = base.scriptContent ? base.scriptContent : await generateScriptForItem(base)
+      if (!script) return
+
+      const prompts = extractReferenceImagePrompts(script)
+      if (prompts.length === 0) return
+
+      const jobId = await startReferenceImageJob({
+        storyId,
+        storyboardId,
+        prompts: prompts.map((p) => ({
+          name: p.name,
+          prompt: p.prompt,
+          description: p.description,
+          category: p.category === "reference" ? "item" : p.category
+        }))
+      })
+      await waitReferenceImageJob(jobId).catch(() => {})
+      window.dispatchEvent(new Event("video_reference_images_updated"))
+    } finally {
+      setRefImageGeneratingById((prev) => ({ ...prev, [storyboardId]: false }))
+    }
+  }
+
   const handleSaveEditText = async (value: string) => {
     if (!editText.itemId) return
     setEditTextSaving(true)
@@ -161,6 +219,7 @@ export function StoryboardList({
       }
       updateItemById(editText.itemId, (it) => ({ ...it, storyboard_text: json.data!.storyboardText }))
       setEditText({ open: false, itemId: "", initialValue: "" })
+      void triggerGenerateForStoryboard(editText.itemId, json.data.storyboardText)
     } catch (e) {
       const anyErr = e as { message?: string }
       setEditTextError(anyErr?.message ?? "保存失败")
@@ -199,17 +258,20 @@ export function StoryboardList({
           }}
         />
       )}
-      <ImagePreviewModal
-        open={Boolean(preview)}
-        title={preview?.title ?? ""}
-        imageSrc={preview?.imageSrc ?? ""}
-        generatedImageId={preview?.generatedImageId}
-        storyboardId={preview?.storyboardId ?? null}
-        category={preview?.category ?? null}
-        description={preview?.description ?? null}
-        prompt={preview?.prompt ?? null}
-        onClose={closePreview}
-      />
+      {preview ? (
+        <ImagePreviewModal
+          key={`${preview.storyboardId ?? "global"}:${preview.generatedImageId ?? preview.imageSrc}`}
+          open
+          title={preview.title}
+          imageSrc={preview.imageSrc}
+          generatedImageId={preview.generatedImageId}
+          storyboardId={preview.storyboardId ?? null}
+          category={preview.category ?? null}
+          description={preview.description ?? null}
+          prompt={preview.prompt ?? null}
+          onClose={closePreview}
+        />
+      ) : null}
       {editText.open ? (
         <StoryboardTextModal
           open={editText.open}
@@ -272,6 +334,8 @@ export function StoryboardList({
           onSelect={toggleSelect}
           previewsById={previewsById}
           onPreviewImage={openPreview}
+          onGenerateReferenceImages={handleGenerateReferenceImages}
+          refImageGeneratingById={refImageGeneratingById}
           onOpenEdit={(itemId, initialValue) => {
             setEditText({ open: true, itemId, initialValue })
             setEditTextError(null)
