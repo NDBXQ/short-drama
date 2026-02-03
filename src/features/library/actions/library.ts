@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers"
 import { getDb } from "coze-coding-dev-sdk"
-import { generatedImages, jobs, stories, storyOutlines, storyboards } from "@/shared/schema"
+import { generatedImages, jobs, stories, storyOutlines, storyboards, tvcStories } from "@/shared/schema"
 import { desc, eq, and, inArray, like, sql } from "drizzle-orm"
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
@@ -10,6 +10,7 @@ import { logger } from "@/shared/logger"
 import type { LibraryItem } from "../components/LibraryCard"
 import type { StoryMetadata } from "@/features/video/types/story"
 import { z } from "zod"
+import { ensureTvcSchema } from "@/server/db/ensureTvcSchema"
 
 function mapProgressStageToLibraryType(progressStage: string | null | undefined): LibraryItem["type"] {
   if (progressStage === "video_assets" || progressStage === "done") return "video"
@@ -29,7 +30,9 @@ export async function getMyStories(query?: string): Promise<LibraryItem[]> {
   const session = await verifySessionToken(token, traceId)
   if (!session) return []
 
-  const db = await getDb({ stories, storyOutlines, storyboards })
+  await ensureTvcSchema()
+
+  const db = await getDb({ stories, storyOutlines, storyboards, tvcStories })
 
   const conditions = [eq(stories.userId, session.userId)]
   const normalizedQuery = query?.trim() ?? ""
@@ -51,10 +54,11 @@ export async function getMyStories(query?: string): Promise<LibraryItem[]> {
     .where(and(...conditions))
     .orderBy(desc(stories.updatedAt))
 
-  const items: LibraryItem[] = rows.map((row) => {
+  const items: Array<LibraryItem & { __sort: number }> = rows.map((row) => {
     const metadata = (row.metadata ?? {}) as StoryMetadata
     const thumbnail = typeof metadata?.thumbnail === "string" ? metadata.thumbnail : undefined
 
+    const sortMs = row.updatedAt ? new Date(row.updatedAt).getTime() : new Date(row.createdAt).getTime()
     const dateStr = row.updatedAt
       ? new Date(row.updatedAt)
           .toLocaleString("zh-CN", {
@@ -77,12 +81,45 @@ export async function getMyStories(query?: string): Promise<LibraryItem[]> {
       specs: `${row.aspectRatio} ｜ ${row.resolution}`,
       thumbnail,
       metadata,
-      progressStage: row.progressStage
-    } satisfies LibraryItem
+      progressStage: row.progressStage,
+      __sort: sortMs
+    } satisfies LibraryItem & { __sort: number }
   })
 
+  const tvcConditions = [eq(tvcStories.userId, session.userId)]
+  if (normalizedQuery) {
+    tvcConditions.push(like(tvcStories.title, `%${normalizedQuery}%`))
+  }
+
+  const tvcRows = await db
+    .select()
+    .from(tvcStories)
+    .where(and(...tvcConditions))
+    .orderBy(desc(sql`coalesce(${tvcStories.updatedAt}, ${tvcStories.createdAt})`))
+
+  const tvcItems: Array<LibraryItem & { __sort: number }> = tvcRows.map((row) => {
+    const sortMs = row.updatedAt ? new Date(row.updatedAt).getTime() : new Date(row.createdAt).getTime()
+    const time = row.updatedAt ?? row.createdAt
+    const dateStr = time
+      ? new Date(time)
+          .toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })
+          .replace(/\//g, "-")
+      : ""
+    return {
+      id: row.id,
+      title: (row.title ?? "").trim() || "未命名 TVC 项目",
+      type: "tvc",
+      updatedAt: dateStr,
+      specs: `${row.aspectRatio} ｜ ${row.resolution}`,
+      progressStage: row.progressStage,
+      __sort: sortMs
+    }
+  })
+
+  items.push(...tvcItems)
+
   const missingThumbnailStoryIds = items
-    .filter((i) => !i.thumbnail)
+    .filter((i) => i.type !== "tvc" && !i.thumbnail)
     .map((i) => i.id)
     .slice(0, 200)
 
@@ -124,6 +161,8 @@ export async function getMyStories(query?: string): Promise<LibraryItem[]> {
   })
 
   return items
+    .sort((a, b) => b.__sort - a.__sort)
+    .map(({ __sort, ...rest }) => rest)
 }
 
 export async function getDraftStories(query?: string): Promise<LibraryItem[]> {

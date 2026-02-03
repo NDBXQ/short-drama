@@ -26,7 +26,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const existed = await db
     .select({ id: publicResources.id, originalStorageKey: publicResources.originalStorageKey })
     .from(publicResources)
-    .where(eq(publicResources.id, parsed.data.id))
+    .where(and(eq(publicResources.id, parsed.data.id), eq(publicResources.userId, userId)))
     .limit(1)
 
   const resource = existed[0]
@@ -62,4 +62,3 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   return NextResponse.json(makeApiOk(traceId, { deleted: true }), { status: 200 })
 }
-

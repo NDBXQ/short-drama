@@ -1,10 +1,10 @@
 .board {
-  --border-color: #e5e7eb;
-  --bg-subtle: #f9fafb;
-  --bg-white: #ffffff;
-  --text-main: #111827;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
+  --border-color: var(--theme-border);
+  --bg-subtle: var(--theme-surface-3);
+  --bg-white: var(--theme-surface);
+  --text-main: var(--theme-text-strong);
+  --text-secondary: var(--theme-text-muted);
+  --text-tertiary: var(--theme-text-faint);
   --blue-primary: #4f46e5;
   --blue-light: rgba(109, 94, 247, 0.12);
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -45,8 +45,10 @@
   gap: 12px;
   padding: 12px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: var(--theme-blur);
   overflow: hidden;
 }
 
@@ -73,8 +75,8 @@
 
 .card {
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--theme-surface-2);
+  border: 1px solid var(--theme-border);
   overflow: hidden;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
@@ -82,8 +84,8 @@
 }
 
 .card:hover {
-  border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.10);
+  border-color: var(--theme-border-strong);
+  box-shadow: 0 18px 52px rgba(2, 6, 23, 0.45);
   transform: translateY(-1px);
 }
 
@@ -111,9 +113,9 @@
   width: 28px;
   height: 24px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(15, 23, 42, 0.03);
-  color: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--theme-text-muted);
   display: inline-grid;
   place-items: center;
   cursor: pointer;
@@ -121,17 +123,17 @@
 }
 
 .iconBtn:hover {
-  background: rgba(15, 23, 42, 0.06);
-  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--theme-border-strong);
 }
 
 .preview {
   height: 128px;
   background: radial-gradient(240px 180px at 30% 25%, rgba(37, 99, 235, 0.18), transparent 55%),
     radial-gradient(260px 200px at 75% 25%, rgba(123, 97, 255, 0.16), transparent 60%),
-    linear-gradient(135deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.02));
-  border-top: 1px solid rgba(15, 23, 42, 0.06);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    linear-gradient(135deg, rgba(2, 6, 23, 0.35), rgba(255, 255, 255, 0.04));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
   overflow: hidden;
 }
@@ -182,9 +184,9 @@
 }
 
 .actionBtn:hover {
-  background: #fff;
-  border-color: #d1d5db;
-  color: var(--blue-primary);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--theme-border-strong);
+  color: var(--theme-text-strong);
 }
 
 .actionBtn:active {

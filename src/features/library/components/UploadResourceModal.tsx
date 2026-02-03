@@ -1,15 +1,21 @@
 "use client"
 
-import { useState, useMemo, type ReactElement } from "react"
+import { useState, useMemo, useRef, type ReactElement } from "react"
 import { X } from "lucide-react"
 import styles from "./UploadResourceModal.module.css"
 
 export type ResourceType = 'character' | 'background' | 'props' | 'audio' | 'music' | 'effect' | 'transition' | 'video'
 
+export type UploadProgress = {
+  loaded: number
+  total: number
+  percent: number | null
+}
+
 interface UploadResourceModalProps {
   open: boolean
   onClose: () => void
-  onUpload: (data: FormData) => Promise<void>
+  onUpload: (data: FormData, opts?: { onProgress?: (p: UploadProgress) => void; onAbort?: (abort: () => void) => void }) => Promise<void>
 }
 
 export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceModalProps): ReactElement | null {
@@ -21,6 +27,8 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
   const [scenes, setScenes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [progressPercent, setProgressPercent] = useState<number | null>(null)
+  const abortRef = useRef<(() => void) | null>(null)
 
   const canSubmit = useMemo(() => file != null && !submitting, [file, submitting])
   const accept = useMemo(() => {
@@ -35,6 +43,8 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
     try {
       setSubmitting(true)
       setError(null)
+      setProgressPercent(0)
+      abortRef.current = null
       
       const fd = new FormData()
       fd.append('file', file)
@@ -44,7 +54,12 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
       if (tags.trim()) fd.append('tags', tags.trim())
       if (scenes.trim()) fd.append('applicableScenes', scenes.trim())
 
-      await onUpload(fd)
+      await onUpload(fd, {
+        onProgress: (p) => setProgressPercent(p.percent),
+        onAbort: (abort) => {
+          abortRef.current = abort
+        }
+      })
       
       // Reset form
       setFile(null)
@@ -52,9 +67,11 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
       setDescription('')
       setTags('')
       setScenes('')
+      setProgressPercent(null)
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : '上传失败')
+      setProgressPercent(null)
     } finally {
       setSubmitting(false)
     }
@@ -64,11 +81,18 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
 
   return (
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div className={styles.overlay} onClick={() => (submitting ? undefined : onClose())} />
       <div className={styles.modal}>
         <div className={styles.header}>
           <div className={styles.title}>上传公共资源</div>
-          <button type="button" className={styles.closeBtn} onClick={onClose}>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={() => {
+              if (submitting) abortRef.current?.()
+              else onClose()
+            }}
+          >
             <X size={20} />
           </button>
         </div>
@@ -99,6 +123,7 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
                 className={styles.fileInput}
                 accept={accept}
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
+                disabled={submitting}
               />
             </div>
           </div>
@@ -112,6 +137,7 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
                 placeholder="可选"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                disabled={submitting}
               />
             </div>
             <div className={styles.field}>
@@ -122,6 +148,7 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
                 placeholder="逗号分隔，如：商务,正式"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
+                disabled={submitting}
               />
             </div>
           </div>
@@ -134,6 +161,7 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
               placeholder="可选"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              disabled={submitting}
             />
           </div>
 
@@ -145,8 +173,21 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
               placeholder="逗号分隔，如：广告,宣传片"
               value={scenes}
               onChange={(e) => setScenes(e.target.value)}
+              disabled={submitting}
             />
           </div>
+
+          {submitting ? (
+            <div className={styles.progressBox}>
+              <div className={styles.progressHeader}>
+                <span>上传中</span>
+                <span>{typeof progressPercent === "number" ? `${progressPercent}%` : ""}</span>
+              </div>
+              <div className={styles.progressTrack}>
+                <div className={styles.progressFill} style={{ width: `${Math.max(0, Math.min(100, progressPercent ?? 0))}%` }} />
+              </div>
+            </div>
+          ) : null}
 
           {error && <div className={styles.error}>{error}</div>}
         </div>
@@ -155,10 +196,12 @@ export function UploadResourceModal({ open, onClose, onUpload }: UploadResourceM
           <button 
             type="button" 
             className={styles.cancelBtn} 
-            onClick={onClose}
-            disabled={submitting}
+            onClick={() => {
+              if (submitting) abortRef.current?.()
+              else onClose()
+            }}
           >
-            取消
+            {submitting ? '取消上传' : '取消'}
           </button>
           <button 
             type="button" 

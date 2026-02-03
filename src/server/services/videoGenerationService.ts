@@ -1,5 +1,6 @@
 import { createCozeS3Storage } from "@/server/integrations/storage/s3"
 import { logger } from "@/shared/logger"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
 import { ServiceError } from "@/server/services/errors"
 
@@ -20,7 +21,7 @@ export class VideoGenerationService {
    * @returns {Promise<GenerateVideoResult>} 生成结果
    */
   static async generateVideo(userId: string, input: GenerateVideoInput, traceId: string): Promise<GenerateVideoResult> {
-    const { storyboardId: inputStoryboardId, storyId: inputStoryId, prompt, mode, ratio, duration, watermark, first_image, last_image, forceRegenerate, async: asyncMode } = input
+    const { storyboardId: inputStoryboardId, storyId: inputStoryId, prompt, mode, duration, watermark, first_image, last_image, forceRegenerate, async: asyncMode } = input
     const generateAudio = input.generate_audio ?? input.generateAudio ?? false
     const returnLastFrame = input.return_last_frame ?? true
     const resolvedMode = mode.trim()
@@ -28,8 +29,6 @@ export class VideoGenerationService {
     let resolvedStoryboardId: string | null = null
     let resolvedStoryId: string | null = null
     let existingVideoStorageKey: string | null = null
-    let resolvedResolution: string | null = null
-    let resolvedAspectRatio: string | null = null
     let resolvedVideoInfoBase: any | null = null
 
     if (inputStoryboardId) {
@@ -38,20 +37,27 @@ export class VideoGenerationService {
       resolvedStoryId = info.storyId
       resolvedVideoInfoBase = info.videoInfoBase
       existingVideoStorageKey = info.existingVideoStorageKey
-      resolvedResolution = info.resolution
-      resolvedAspectRatio = info.aspectRatio
     } else if (inputStoryId) {
       const info = await VideoDbService.findMatchingStoryboard(userId, inputStoryId, first_image.url)
       resolvedStoryboardId = info?.storyboardId || null
       resolvedStoryId = info?.storyId || inputStoryId // Should be inputStoryId if not null
       resolvedVideoInfoBase = info?.videoInfoBase
       existingVideoStorageKey = info?.existingVideoStorageKey || null
-      resolvedResolution = info?.resolution || null
-      resolvedAspectRatio = info?.aspectRatio || null
     }
 
-    const finalResolution = (input.resolution ?? resolvedResolution ?? "").trim() || "1080p"
-    const finalRatio = (resolvedAspectRatio ?? "").trim() || ratio.trim() || "adaptive"
+    let storyResolution = ""
+    let storyAspectRatio = ""
+    const effectiveStoryId = resolvedStoryId ?? inputStoryId ?? null
+    if (effectiveStoryId) {
+      try {
+        const info = await VideoDbService.getStoryInfo(effectiveStoryId)
+        storyResolution = (info.resolution ?? "").trim()
+        storyAspectRatio = (info.aspectRatio ?? "").trim()
+      } catch {
+      }
+    }
+    const finalResolution = storyResolution || "1080p"
+    const finalRatio = storyAspectRatio || "adaptive"
 
     if (asyncMode) {
       return VideoJobManager.enqueueJob(
@@ -70,7 +76,7 @@ export class VideoGenerationService {
     const storage = createCozeS3Storage()
 
     if (!forceRegenerate && existingVideoStorageKey) {
-      const signed = await storage.generatePresignedUrl({ key: existingVideoStorageKey, expireTime: 604800 })
+      const signed = await resolveStorageUrl(storage, existingVideoStorageKey)
       return {
         async: false,
         storyId: resolvedStoryId ?? inputStoryId ?? null,
@@ -138,7 +144,7 @@ export class VideoGenerationService {
     const fileKey = `generated_${resolvedStoryId ?? inputStoryId ?? "story"}_${resolvedStoryboardId ?? "unknown"}_${safeName}_${timestamp}.mp4`
 
     const uploadedKey = await storage.uploadFile({ fileContent: buf, fileName: fileKey, contentType: "video/mp4" })
-    const signedUrl = await storage.generatePresignedUrl({ key: uploadedKey, expireTime: 604800 })
+    const signedUrl = await resolveStorageUrl(storage, uploadedKey)
 
     if (resolvedStoryboardId) {
       await VideoDbService.updateStoryboardVideo(resolvedStoryboardId, resolvedVideoInfoBase, {
@@ -181,7 +187,7 @@ export class VideoGenerationService {
    * @returns {Promise<Record<string, unknown>>} Coze返回结果
    */
   static async generateVideoDirect(input: GenerateVideoInput, traceId: string): Promise<Record<string, unknown>> {
-    const { storyId, mode, ratio } = input
+    const { storyId, mode } = input
     const resolvedMode = mode.trim()
 
     let resolvedResolution = "1080p"
@@ -202,8 +208,8 @@ export class VideoGenerationService {
       }
     }
     
-    const finalResolution = (input.resolution ?? resolvedResolution ?? "").trim() || "1080p"
-    const finalRatio = (resolvedAspectRatio ?? "").trim() || ratio.trim() || "adaptive"
+    const finalResolution = (resolvedResolution ?? "").trim() || "1080p"
+    const finalRatio = (resolvedAspectRatio ?? "").trim() || "adaptive"
 
     if (storyId) {
       await VideoDbService.updateStoryStatus(storyId, {

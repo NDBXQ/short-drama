@@ -45,10 +45,9 @@ export async function GET(req: NextRequest): Promise<Response> {
   const existed = await db
     .select({ id: publicResources.id })
     .from(publicResources)
-    .where(and(eq(publicResources.originalStorageKey, img.storageKey), eq(publicResources.type, type)))
+    .where(and(eq(publicResources.userId, userId), eq(publicResources.originalStorageKey, img.storageKey), eq(publicResources.type, type)))
     .limit(1)
 
   const id = existed[0]?.id ?? null
   return NextResponse.json(makeApiOk(traceId, { exists: Boolean(id), id }), { status: 200 })
 }
-

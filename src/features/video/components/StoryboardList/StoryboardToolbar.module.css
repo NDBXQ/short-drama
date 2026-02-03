@@ -1,11 +1,13 @@
 .toolbar {
   padding: 12px 14px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--theme-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--theme-surface);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: var(--theme-blur);
   width: 100%;
 }
 
@@ -19,7 +21,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--theme-text-strong);
 }
 
 .toolbarActions {
@@ -35,27 +37,27 @@
   height: 30px;
   padding: 0 10px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  color: #0f172a;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--theme-text-strong);
   font-weight: 800;
   font-size: 12px;
   cursor: pointer;
 }
 
 .btnPrimary {
-  background: #2563eb;
-  border-color: rgba(37, 99, 235, 0.85);
-  color: #fff;
+  background: linear-gradient(135deg, rgba(123, 97, 255, 0.95) 0%, rgba(79, 70, 229, 0.92) 100%);
+  border-color: rgba(109, 94, 247, 0.26);
+  color: rgba(255, 255, 255, 0.96);
 }
 
 .btnDanger {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.25);
-  color: #991b1b;
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.26);
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .toolbarMeta {
-  color: #9ca3af;
+  color: var(--theme-text-muted);
   font-size: 0.875rem;
 }

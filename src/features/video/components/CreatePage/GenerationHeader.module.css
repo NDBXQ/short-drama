@@ -6,11 +6,11 @@
   height: 44px;
   padding: 0 12px;
   margin: 8px 0 0;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
   border-radius: 14px;
-  box-shadow: 0 16px 44px -26px rgba(15, 23, 42, 0.25);
-  backdrop-filter: blur(10px);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: var(--theme-blur);
 }
 
 .backBtn {
@@ -20,9 +20,9 @@
   height: 30px;
   padding: 0 10px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(15, 23, 42, 0.03);
-  color: rgba(15, 23, 42, 0.86);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.86);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
@@ -30,8 +30,8 @@
 }
 
 .backBtn:hover {
-  background: #fff;
-  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .leftArea {
@@ -55,9 +55,9 @@
   height: 30px;
   padding: 0 10px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(15, 23, 42, 0.03);
-  color: rgba(15, 23, 42, 0.86);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.86);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
@@ -65,8 +65,8 @@
 }
 
 .modeBadge:hover {
-  background: #fff;
-  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .modeTabs {
@@ -75,8 +75,8 @@
   align-items: center;
   gap: 6px;
   padding: 3px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 999px;
 }
 
@@ -120,9 +120,9 @@
   height: 24px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(255, 255, 255, 0.70);
-  color: rgba(15, 23, 42, 0.72);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.72);
   font-weight: 800;
 }
 

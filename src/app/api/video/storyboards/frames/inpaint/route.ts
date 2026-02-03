@@ -12,6 +12,7 @@ import { generateThumbnail } from "@/lib/thumbnail"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
 import { storyboards, stories, storyOutlines } from "@/shared/schema"
 import { mergeStoryboardFrames } from "@/server/services/storyboardAssets"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 import sharp from "sharp"
 
 export const runtime = "nodejs"
@@ -136,8 +137,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     const uploadedOriginalKey = await storage.uploadFile({ fileContent: jpegBytes, fileName: originalFileKey, contentType: "image/jpeg" })
     const uploadedThumbnailKey = await storage.uploadFile({ fileContent: thumbnailBytes, fileName: thumbnailFileKey, contentType: "image/jpeg" })
 
-    const originalSignedUrl = await storage.generatePresignedUrl({ key: uploadedOriginalKey, expireTime: 604800 })
-    const thumbnailSignedUrl = await storage.generatePresignedUrl({ key: uploadedThumbnailKey, expireTime: 604800 })
+    const originalSignedUrl = await resolveStorageUrl(storage, uploadedOriginalKey)
+    const thumbnailSignedUrl = await resolveStorageUrl(storage, uploadedThumbnailKey)
 
     const framesPatch =
       frameKind === "first"
@@ -187,4 +188,3 @@ export async function POST(req: NextRequest): Promise<Response> {
     clearTimeout(timer)
   }
 }
-

@@ -268,13 +268,11 @@ export function useGenerationActions({
           storyId,
           prompt: videoPrompt,
           mode: storyboardMode,
-          ratio: "adaptive",
           duration: clampInt(durationSeconds, 4, 12, 4),
           watermark: false,
           forceRegenerate: hasExistingVideo,
           return_last_frame: true,
           generate_audio: hasVoice,
-          resolution: null,
           first_image: { url: images.first, file_type: "image" },
           last_image: images.last ? { url: images.last, file_type: "image" } : undefined
         })

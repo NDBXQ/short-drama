@@ -45,7 +45,11 @@ export function VideoPageClient({
         <div className={`${styles.headerLeft} ${styles.headerLeftCompact}`}>
           <div className={`${styles.headerTag} ${styles.headerTagCompact}`}>视频创作</div>
           <div className={`${styles.headerTitle} ${styles.headerTitleCompact}`}>分镜管理</div>
-          <div className={styles.headerSubtitle}>先在分镜表整理镜头与素材，再进入生图/生视频工作台。</div>
+          <div className={styles.headerSubtitle}>
+            {autoGenerateMode
+              ? "正在从剧本自动生成分镜，你可以随时查看生成详情与任务进度。"
+              : "先在分镜表整理镜头与素材，再进入生图/生视频工作台。"}
+          </div>
         </div>
         <div className={`${styles.tabs} ${styles.tabsCompact}`}>
           <button

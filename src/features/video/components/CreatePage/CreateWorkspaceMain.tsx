@@ -49,7 +49,7 @@ export function CreateWorkspaceMain({
           className={shellStyles.body}
           style={
             {
-              ["--dock-h" as any]: activeTab === "video" ? "190px" : "120px",
+              ["--dock-h" as any]: activeTab === "video" ? "190px" : "140px",
               ["--dock-gap" as any]: "8px",
               gridTemplateRows: "calc(100% - var(--dock-h, 0px) - var(--dock-gap, 0px)) var(--dock-h, 0px)",
               rowGap: "var(--dock-gap, 0px)",
@@ -65,4 +65,3 @@ export function CreateWorkspaceMain({
     </>
   )
 }
-

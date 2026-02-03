@@ -11,12 +11,12 @@ const inputSchema = z.object({
   storyId: z.string().trim().min(1).max(200).optional(),
   prompt: z.string().trim().min(1).max(20_000),
   mode: z.string().trim().min(1).max(50),
-  ratio: z.string().trim().min(1).max(20),
+  ratio: z.string().trim().min(1).max(20).default("adaptive"),
   duration: z.number().int().min(1).max(60),
   generate_audio: z.boolean().optional(),
   return_last_frame: z.boolean().optional(),
   watermark: z.boolean(),
-  resolution: z.string().trim().min(1).max(50).nullable().optional(),
+  resolution: z.unknown().optional(),
   first_image: z
     .object({
       url: z.string().trim().url().max(5_000),

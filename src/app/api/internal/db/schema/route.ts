@@ -257,6 +257,8 @@ export async function POST(req: Request): Promise<Response> {
       ADD COLUMN IF NOT EXISTS prompt text
     `)
 
+    await db.execute(sql`CREATE SCHEMA IF NOT EXISTS tvc;`)
+
     const durationMs = Date.now() - start
     logger.info({
       event: "db_schema_migrate_success",

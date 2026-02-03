@@ -82,6 +82,42 @@ function withReferenceAsset(
   return next
 }
 
+function renameEntityInScript(current: StoryboardScriptContent, input: { category: string; from: string; to: string }): StoryboardScriptContent {
+  const from = input.from.trim()
+  const to = input.to.trim()
+  if (!from || !to || from === to) return current
+  const next = structuredClone(current)
+  if (input.category === "role") {
+    for (const list of [next.shot_content?.roles, next.video_content?.roles]) {
+      if (!Array.isArray(list)) continue
+      for (const r of list) {
+        if (r && typeof r.role_name === "string" && r.role_name.trim() === from) r.role_name = to
+      }
+    }
+    return next
+  }
+  if (input.category === "background") {
+    const bg1 = next.shot_content?.background
+    if (bg1 && typeof bg1.background_name === "string" && bg1.background_name.trim() === from) bg1.background_name = to
+    const bg2 = next.video_content?.background
+    if (bg2 && typeof bg2.background_name === "string" && bg2.background_name.trim() === from) bg2.background_name = to
+    return next
+  }
+  const replaceInArray = (arr: unknown) => {
+    if (!Array.isArray(arr)) return arr
+    return arr.map((v) => (typeof v === "string" && v.trim() === from ? to : v))
+  }
+  next.shot_content.role_items = replaceInArray(next.shot_content.role_items) as any
+  next.shot_content.other_items = replaceInArray(next.shot_content.other_items) as any
+  for (const list of [next.video_content?.items, next.video_content?.other_items]) {
+    if (!Array.isArray(list)) continue
+    for (const it of list) {
+      if (it && typeof it.item_name === "string" && it.item_name.trim() === from) it.item_name = to
+    }
+  }
+  return next
+}
+
 export async function POST(req: NextRequest): Promise<Response> {
   const traceId = getTraceId(req.headers)
   const session = await getSessionFromRequest(req)
@@ -124,6 +160,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   const thumbnailUrl = (resource.previewUrl || "").trim() || null
   const thumbnailStorageKey = (resource.previewStorageKey || "").trim() || null
 
+  const assetName = typeof resource.name === "string" ? resource.name : displayName ?? name
+  const assetDescription = typeof resource.description === "string" ? resource.description : ""
+
   const existed = await db
     .select({ id: generatedImages.id })
     .from(generatedImages)
@@ -138,6 +177,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           await db
             .update(generatedImages)
             .set({
+              name: assetName,
               url,
               storageKey,
               thumbnailUrl,
@@ -153,7 +193,7 @@ export async function POST(req: NextRequest): Promise<Response> {
             .values({
               storyId: effectiveStoryId,
               storyboardId,
-              name,
+              name: assetName,
               description: typeof resource.description === "string" ? resource.description : null,
               url,
               storageKey,
@@ -164,15 +204,17 @@ export async function POST(req: NextRequest): Promise<Response> {
             .returning()
         )[0]
 
-  const assetName = typeof resource.name === "string" ? resource.name : displayName ?? name
-  const assetDescription = typeof resource.description === "string" ? resource.description : ""
-  const nextScript = withReferenceAsset(storyRow[0]?.scriptContent ?? null, {
+  const renamedScript = renameEntityInScript(storyRow[0]?.scriptContent ?? buildEmptyScript(), { category, from: name, to: assetName })
+  const nextScript = withReferenceAsset(renamedScript, {
     category,
-    entityName: name,
+    entityName: assetName,
     assetName,
     assetDescription
   })
   await db.update(storyboards).set({ scriptContent: nextScript, updatedAt: new Date() }).where(eq(storyboards.id, storyboardId))
 
-  return NextResponse.json(makeApiOk(traceId, saved), { status: 200 })
+  return NextResponse.json(
+    makeApiOk(traceId, { ...saved, pickedEntityName: assetName, pickedTitle: assetName, pickedDescription: assetDescription }),
+    { status: 200 }
+  )
 }

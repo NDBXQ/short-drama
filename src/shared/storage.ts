@@ -1,5 +1,6 @@
 import { S3Storage } from "coze-coding-dev-sdk"
 import { readEnv } from "@/features/coze/env"
+import { resolveStorageUrl } from "./storageUrl"
 
 let s3Instance: S3Storage | null = null
 
@@ -49,7 +50,7 @@ export async function uploadPublicFile(
 
   let url = ""
   try {
-    url = await storage.generatePresignedUrl({ key: uploadedKey, expireTime: 60 * 60 * 24 * 7 })
+    url = await resolveStorageUrl(storage, uploadedKey)
   } catch {
     url = new URL(`/${bucketName}/${uploadedKey}`, endpointUrl).toString()
   }
@@ -82,7 +83,7 @@ export async function uploadPublicBuffer(input: {
 
   let url = ""
   try {
-    url = await storage.generatePresignedUrl({ key: uploadedKey, expireTime: 60 * 60 * 24 * 7 })
+    url = await resolveStorageUrl(storage, uploadedKey)
   } catch {
     url = new URL(`/${bucketName}/${uploadedKey}`, endpointUrl).toString()
   }

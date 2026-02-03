@@ -23,6 +23,8 @@ type Props = {
   activeFrameImages?: { first?: string | null; last?: string | null }
   activeTitle: string
   thumbnails: Thumbnail[]
+  episodeThumbnailRows?: Array<{ outlineId: string; title: string; thumbnails: Thumbnail[] }>
+  onEpisodeThumbnailClick?: (p: { outlineId: string; storyboardId: string }) => void
   activeId: string
   onThumbnailClick: (id: string) => void
   onOpenFrameImage?: (frame: { label: string; src: string }) => void
@@ -42,6 +44,8 @@ export function MediaPreviewPanel({
   activeFrameImages,
   activeTitle,
   thumbnails,
+  episodeThumbnailRows,
+  onEpisodeThumbnailClick,
   activeId,
   onThumbnailClick,
   onOpenFrameImage,
@@ -246,6 +250,8 @@ export function MediaPreviewPanel({
           mode={mode}
           activeId={activeId}
           thumbnails={thumbnails}
+          episodeThumbnailRows={episodeThumbnailRows}
+          onEpisodeThumbnailClick={onEpisodeThumbnailClick}
           onThumbnailClick={onThumbnailClick}
           timelineSegments={segments}
           segmentFirstFrames={segmentFirstFrames}

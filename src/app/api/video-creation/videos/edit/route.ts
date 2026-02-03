@@ -9,6 +9,7 @@ import { callCozeRunEndpoint, CozeRunEndpointError } from "@/features/coze/runEn
 import { logger } from "@/shared/logger"
 import { generatedAudios, publicResources, stories } from "@/shared/schema"
 import { getS3Storage } from "@/shared/storage"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 import { and, eq, inArray } from "drizzle-orm"
 
 export const runtime = "nodejs"
@@ -192,8 +193,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         const storageKey = extracted.kind === "preview" ? row.previewStorageKey : row.originalStorageKey
         const fallbackUrl = extracted.kind === "preview" ? row.previewUrl : (row.originalUrl || row.previewUrl)
         if (storageKey) {
-          const signed = await storage.generatePresignedUrl({ key: storageKey, expireTime: 60 * 10 })
-          return signed
+          return await resolveStorageUrl(storage, storageKey)
         }
         if (typeof fallbackUrl === "string" && fallbackUrl.startsWith("http")) return fallbackUrl
         throw new Error(`资源链接不存在: ${extracted.id}`)
@@ -204,8 +204,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         const row = audioMap.get(audioId) ?? null
         if (!row) throw new Error(`音频不存在: ${audioId}`)
         if (row.storageKey) {
-          const signed = await storage.generatePresignedUrl({ key: row.storageKey, expireTime: 60 * 10 })
-          return signed
+          return await resolveStorageUrl(storage, row.storageKey)
         }
         if (typeof row.url === "string" && row.url.startsWith("http")) return row.url
         throw new Error(`音频链接不存在: ${audioId}`)

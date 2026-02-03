@@ -7,6 +7,7 @@ import { generatedImages, publicResources, stories } from "@/shared/schema"
 import { getSessionFromRequest } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
 import { getS3Storage } from "@/shared/storage"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 
 const inputSchema = z.object({
   generatedImageId: z.string().trim().min(1).max(200)
@@ -63,19 +64,20 @@ export async function POST(req: NextRequest): Promise<Response> {
   const existed = await db
     .select({ id: publicResources.id })
     .from(publicResources)
-    .where(and(eq(publicResources.originalStorageKey, originalKey), eq(publicResources.type, type)))
+    .where(and(eq(publicResources.userId, userId), eq(publicResources.originalStorageKey, originalKey), eq(publicResources.type, type)))
     .limit(1)
   if (existed.length > 0) {
     return NextResponse.json(makeApiOk(traceId, { ok: true, id: existed[0]!.id, skipped: true }), { status: 200 })
   }
 
   const storage = getS3Storage()
-  const previewUrl = await storage.generatePresignedUrl({ key: previewKey, expireTime: 60 * 60 * 24 * 7 })
-  const originalUrl = await storage.generatePresignedUrl({ key: originalKey, expireTime: 60 * 60 * 24 * 7 })
+  const previewUrl = await resolveStorageUrl(storage, previewKey)
+  const originalUrl = await resolveStorageUrl(storage, originalKey)
 
   const [created] = await db
     .insert(publicResources)
     .values({
+      userId,
       type,
       source: "ai",
       name: img.name,

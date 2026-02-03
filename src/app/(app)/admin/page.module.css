@@ -1,0 +1,64 @@
+.page {
+  width: min(1040px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 26px 0 40px;
+  display: grid;
+  gap: 18px;
+}
+
+.header {
+  display: grid;
+  gap: 6px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.subtitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  border-radius: 16px;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px 14px;
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--theme-shadow);
+  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(109, 94, 247, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.cardDesc {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.62);
+  line-height: 1.5;
+}

@@ -3,6 +3,7 @@ import { getDb } from "coze-coding-dev-sdk"
 import { insertUserSchema, updateUserSchema, users } from "@/shared/schema"
 import type { InsertUser, UpdateUser, User } from "@/shared/schema"
 import { hashPassword, verifyPassword } from "./password"
+import { ensurePublicSchema } from "@/server/db/ensurePublicSchema"
 
 export class InvalidCredentialsError extends Error {
   name = "InvalidCredentialsError"
@@ -24,6 +25,7 @@ export class UserManager {
    * @returns {Promise<User>} 创建后的用户
    */
   async createUser(data: InsertUser): Promise<User> {
+    await ensurePublicSchema()
     const db = await getDb({ users })
     const validated = insertUserSchema.parse(data)
     const [user] = await db.insert(users).values(validated).returning()
@@ -36,6 +38,7 @@ export class UserManager {
    * @returns {Promise<User | null>} 用户或空
    */
   async getUserById(id: string): Promise<User | null> {
+    await ensurePublicSchema()
     const db = await getDb({ users })
     const [user] = await db.select().from(users).where(eq(users.id, id))
     return user || null
@@ -47,6 +50,7 @@ export class UserManager {
    * @returns {Promise<User | null>} 用户或空
    */
   async getUserByAccount(account: string): Promise<User | null> {
+    await ensurePublicSchema()
     const db = await getDb({ users })
     const [user] = await db
       .select()
@@ -62,6 +66,7 @@ export class UserManager {
    * @returns {Promise<User | null>} 更新后的用户或空
    */
   async updateUser(id: string, data: UpdateUser): Promise<User | null> {
+    await ensurePublicSchema()
     const db = await getDb({ users })
     const validated = updateUserSchema.parse(data)
     const [user] = await db

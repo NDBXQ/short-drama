@@ -1,20 +1,22 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.38);
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(12px);
   display: grid;
   place-items: center;
-  z-index: 70;
+  z-index: 100;
   padding: 18px;
 }
 
 .modal {
   width: min(640px, calc(100vw - 36px));
   max-height: calc(100vh - 36px);
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  border-radius: var(--theme-radius);
+  background: rgba(2, 6, 23, 0.86);
+  border: 1px solid var(--theme-border-strong);
+  box-shadow: var(--theme-shadow-strong);
+  backdrop-filter: var(--theme-blur);
   overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -22,7 +24,7 @@
 
 .modalHeader {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-bottom: 1px solid var(--theme-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -32,7 +34,7 @@
 .modalTitle {
   font-size: 13px;
   font-weight: 900;
-  color: var(--text-main);
+  color: var(--theme-text-strong);
 }
 
 .modalBody {
@@ -44,9 +46,9 @@
 
 .modalImgWrap {
   width: 100%;
-  border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(15, 23, 42, 0.02);
+  border-radius: var(--theme-radius);
+  border: 1px solid var(--theme-border);
+  background: rgba(2, 6, 23, 0.35);
   overflow: hidden;
 }
 
@@ -58,7 +60,7 @@
 
 .modalActions {
   padding: 12px 14px;
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 1px solid var(--theme-border);
   display: flex;
   gap: 10px;
   justify-content: flex-end;
@@ -68,16 +70,19 @@
   height: 30px;
   padding: 0 12px;
   border-radius: 12px;
-  border: 1px solid rgba(109, 94, 247, 0.65);
-  background: #4f46e5;
+  border: 1px solid rgba(109, 94, 247, 0.26);
+  background: linear-gradient(135deg, rgba(123, 97, 255, 0.95) 0%, rgba(79, 70, 229, 0.92) 100%);
   color: #fff;
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
 }
 
+.modalPrimaryBtn:hover {
+  background: linear-gradient(135deg, rgba(123, 97, 255, 1) 0%, rgba(79, 70, 229, 0.98) 100%);
+}
+
 .modalPrimaryBtn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
-

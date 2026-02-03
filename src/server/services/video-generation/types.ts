@@ -3,13 +3,12 @@ export interface GenerateVideoInput {
   storyId?: string
   prompt: string
   mode: string
-  ratio: string
+  ratio?: string
   duration: number
   generateAudio?: boolean
   generate_audio?: boolean
   return_last_frame?: boolean
   watermark: boolean
-  resolution?: string | null
   first_image: { url: string; file_type: string }
   last_image?: { url: string; file_type: string }
   forceRegenerate?: boolean

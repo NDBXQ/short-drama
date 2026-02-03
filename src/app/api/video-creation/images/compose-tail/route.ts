@@ -30,7 +30,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   try {
     const { storyboardId } = parsed.data
-    const result = await ImageCompositionService.composeImage(userId, storyboardId, traceId, parsed.data.referenceImages)
+    const result = await ImageCompositionService.composeTailImage(userId, storyboardId, traceId, parsed.data.referenceImages)
     return NextResponse.json(makeApiOk(traceId, result), { status: 200 })
   } catch (err) {
     if (err instanceof ServiceError) {

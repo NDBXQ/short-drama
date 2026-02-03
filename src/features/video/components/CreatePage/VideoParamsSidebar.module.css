@@ -4,10 +4,11 @@
   min-height: 0;
   overflow: auto;
   padding: 14px 14px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--theme-border);
   border-radius: 16px;
-  background-color: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 16px 44px -26px rgba(15, 23, 42, 0.25);
+  background-color: var(--theme-surface);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: var(--theme-blur);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -27,8 +28,8 @@
   margin-bottom: 10px;
   padding: 10px 10px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--theme-border);
 }
 
 .labelRow {
@@ -49,8 +50,8 @@
   min-height: 140px;
   resize: vertical;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--theme-border);
+  background: rgba(2, 6, 23, 0.35);
   color: var(--text-main);
   padding: 10px 10px;
   font-size: 12px;
@@ -97,8 +98,8 @@
   width: 100%;
   height: 34px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--theme-border);
+  background: rgba(2, 6, 23, 0.35);
   color: var(--text-main);
   padding: 0 10px;
   font-size: 12px;
@@ -109,8 +110,8 @@
   width: 100%;
   min-height: 34px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--theme-border);
+  background: rgba(2, 6, 23, 0.35);
   color: var(--text-main);
   padding: 7px 10px;
   font-size: 12px;
@@ -140,8 +141,8 @@
   gap: 6px;
   padding: 6px 8px;
   border-radius: 10px;
-  border: 1px dashed rgba(15, 23, 42, 0.18);
-  background: rgba(255, 255, 255, 0.7);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--blue-primary);
   font-size: 12px;
   font-weight: 700;
@@ -149,8 +150,8 @@
 }
 
 .addLink:hover {
-  background: #fff;
-  border-color: rgba(109, 94, 247, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(109, 94, 247, 0.45);
 }
 
 .chipList {
@@ -165,8 +166,8 @@
   gap: 8px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(248, 250, 252, 0.95);
-  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--theme-border);
   color: var(--text-main);
   font-size: 12px;
   font-weight: 700;
@@ -181,8 +182,8 @@
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #fff;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
   display: inline-grid;
   place-items: center;
@@ -192,7 +193,7 @@
 
 .chipRemove:hover {
   border-color: rgba(239, 68, 68, 0.35);
-  color: #ef4444;
+  color: rgba(239, 68, 68, 0.92);
 }
 
 .modeTabs {
@@ -200,8 +201,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 999px;
 }
 
@@ -219,13 +220,13 @@
 }
 
 .modeTab:hover {
-  color: var(--blue-primary);
-  background: rgba(109, 94, 247, 0.10);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .modeTabActive {
   color: var(--text-main);
-  background: rgba(109, 94, 247, 0.16);
+  background: rgba(109, 94, 247, 0.18);
 }
 
 .primaryBtn {

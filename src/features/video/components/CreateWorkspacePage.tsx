@@ -10,6 +10,7 @@ import { useVideoAssetGroups } from "../hooks/create-workspace/useVideoAssetGrou
 import { useFrameImagePreview } from "../hooks/create-workspace/useFrameImagePreview"
 import { usePrevVideoLastFrame } from "../hooks/create-workspace/usePrevVideoLastFrame"
 import { useWorkspaceThumbnails } from "../hooks/create-workspace/useWorkspaceThumbnails"
+import { useWorkspaceEpisodeThumbnails } from "../hooks/create-workspace/useWorkspaceEpisodeThumbnails"
 import { useWorkspaceDialogues } from "../hooks/create-workspace/useWorkspaceDialogues"
 import { useTimelineSegments } from "../hooks/create-workspace/useTimelineSegments"
 import { useSceneSwitch } from "../hooks/create-workspace/useSceneSwitch"
@@ -111,6 +112,12 @@ export function CreateWorkspacePage({
     previewVideoSrcById
   })
 
+  const episodeThumbnails = useWorkspaceEpisodeThumbnails({
+    storyId,
+    enabled: activeTab === "image",
+    previewImageSrcById
+  })
+
   const dialogues = useWorkspaceDialogues(activeItem)
 
   const handleTimelineChange = useCallback((tl: { videoClips: any[]; audioClips: any[] }) => queueSaveTimeline(tl), [queueSaveTimeline])
@@ -157,6 +164,98 @@ export function CreateWorkspacePage({
     setPreviewImageSrcById
   })
 
+  const persistStoryboardScriptContent = useCallback(async (storyboardId: string, nextScriptContent: unknown) => {
+    const res = await fetch("/api/video/storyboards", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storyboardId, scriptContent: nextScriptContent })
+    })
+    const json = (await res.json().catch(() => null)) as { ok: boolean; error?: { message?: string } } | null
+    if (!res.ok || !json?.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
+  }, [])
+
+  const computeNextScriptContent = useCallback((it: any, op: "add" | "remove", category: "role" | "item", nameRaw: string) => {
+    const name = (nameRaw ?? "").trim()
+    const current = (it?.scriptContent as any) ?? {}
+    const shotContent = (current.shot_content as any) ?? {}
+    const videoContent = (current.video_content as any) ?? {}
+    const nextShotContent = { ...shotContent }
+    const nextVideoContent = { ...videoContent }
+
+    if (category === "role") {
+      const roles = (Array.isArray(nextShotContent.roles) ? nextShotContent.roles.slice() : []) as any[]
+      const vcRoles = (Array.isArray(nextVideoContent.roles) ? nextVideoContent.roles.slice() : []) as any[]
+      if (op === "add") {
+        if (!roles.some((r: any) => typeof r?.role_name === "string" && r.role_name.trim() === name)) {
+          roles.push({ role_name: name, appearance_time_point: "", location_info: "", action: "", expression: "", speak: "" })
+        }
+        if (!vcRoles.some((r: any) => typeof r?.role_name === "string" && r.role_name.trim() === name)) {
+          vcRoles.push({ role_name: name, description: "" })
+        }
+        nextShotContent.roles = roles
+        nextVideoContent.roles = vcRoles
+      } else {
+        nextShotContent.roles = roles.filter((r: any) => !(typeof r?.role_name === "string" && r.role_name.trim() === name))
+        nextVideoContent.roles = vcRoles.filter((r: any) => !(typeof r?.role_name === "string" && r.role_name.trim() === name))
+      }
+    } else {
+      const roleItems = (Array.isArray(nextShotContent.role_items) ? nextShotContent.role_items.slice() : []) as any[]
+      const otherItems = (Array.isArray(nextShotContent.other_items) ? nextShotContent.other_items.slice() : []) as any[]
+      const vcItems = (Array.isArray(nextVideoContent.items) ? nextVideoContent.items.slice() : []) as any[]
+      const vcOther = (Array.isArray(nextVideoContent.other_items) ? nextVideoContent.other_items.slice() : []) as any[]
+      if (op === "add") {
+        if (!otherItems.some((v: any) => typeof v === "string" && v.trim() === name)) otherItems.push(name)
+        if (!vcItems.some((r: any) => typeof r?.item_name === "string" && r.item_name.trim() === name)) vcItems.push({ item_name: name, description: "" })
+        nextShotContent.other_items = otherItems
+        nextVideoContent.items = vcItems
+      } else {
+        nextShotContent.role_items = roleItems.filter((v: any) => !(typeof v === "string" && v.trim() === name))
+        nextShotContent.other_items = otherItems.filter((v: any) => !(typeof v === "string" && v.trim() === name))
+        nextVideoContent.items = vcItems.filter((r: any) => !(typeof r?.item_name === "string" && r.item_name.trim() === name))
+        nextVideoContent.other_items = vcOther.filter((r: any) => !(typeof r?.item_name === "string" && r.item_name.trim() === name))
+      }
+    }
+
+    return { ...current, shot_content: nextShotContent, video_content: nextVideoContent }
+  }, [])
+
+  const applyScriptPatch = useCallback(
+    async (p: { storyboardId: string; op: "add" | "remove"; category: "role" | "item"; name: string }) => {
+      const it = items.find((x) => x.id === p.storyboardId) as any
+      if (!it) return
+      const next = computeNextScriptContent(it, p.op, p.category, p.name)
+      await persistStoryboardScriptContent(p.storyboardId, next)
+      setItems((prev) =>
+        prev.map((x) => {
+          if (x.id !== p.storyboardId) return x
+          const shotContent = (next as any)?.shot_content ?? (x as any).shot_content
+          return { ...(x as any), scriptContent: next as any, shot_content: shotContent } as any
+        })
+      )
+    },
+    [computeNextScriptContent, items, persistStoryboardScriptContent, setItems]
+  )
+
+  const handleDeleteAsset = useCallback(
+    async (p: { category: "role" | "item"; name: string; imageId?: string; isGlobal?: boolean }) => {
+      const storyboardId = activeStoryboardId
+      const name = (p.name ?? "").trim()
+      if (!storyboardId || !name) return
+      if (p.category === "role") setRoles((prev) => prev.filter((n) => n !== name))
+      if (p.category === "item") setRoleItems((prev) => prev.filter((n) => n !== name))
+      await applyScriptPatch({ storyboardId, op: "remove", category: p.category, name })
+      if (p.imageId && !p.isGlobal) {
+        const res = await fetch(`/api/video-creation/images/${encodeURIComponent(p.imageId)}`, { method: "DELETE" })
+        const json = (await res.json().catch(() => null)) as { ok: boolean; error?: { message?: string } } | null
+        if (!res.ok || !json?.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("video_reference_images_updated", { detail: { storyboardId } }))
+      }
+    },
+    [activeStoryboardId, applyScriptPatch, setRoleItems, setRoles]
+  )
+
   if (isLoading) return <div className={shellStyles.shell}>加载中…</div>
   if (loadError) return <div className={shellStyles.shell}>{loadError}</div>
 
@@ -169,6 +268,7 @@ export function CreateWorkspacePage({
           title={preview.title}
           imageSrc={preview.imageSrc}
           generatedImageId={preview.generatedImageId}
+          storyId={storyId ?? null}
           storyboardId={preview.storyboardId ?? activeStoryboardId}
           category={preview.category ?? null}
           frameKind={preview.frameKind ?? null}
@@ -234,6 +334,8 @@ export function CreateWorkspacePage({
                 setPreview({ title, imageSrc, generatedImageId, storyboardId: storyboardId ?? activeStoryboardId, category, description, prompt })
               }
               previews={activePreviews}
+              onOpenAddModal={(kind) => setAddModal({ open: true, kind })}
+              onDeleteAsset={handleDeleteAsset}
             />
           ) : (
             <VideoParamsSidebar
@@ -271,7 +373,21 @@ export function CreateWorkspacePage({
               activeFrameImages={activeTab === "image" ? activeFrameImages : undefined}
               activeTitle={activePreview?.title ?? ""}
               thumbnails={thumbnails}
+              episodeThumbnailRows={episodeThumbnails}
               activeId={activeStoryboardId || thumbnails[0]?.id || ""}
+              onEpisodeThumbnailClick={({ outlineId: targetOutlineId, storyboardId: targetStoryboardId }) => {
+                const sid = (storyId ?? "").trim()
+                if (!sid) return
+                const oid = (targetOutlineId ?? "").trim()
+                const tid = (targetStoryboardId ?? "").trim()
+                if (!oid || !tid) return
+                setActiveStoryboardId(tid)
+                if ((outlineId ?? "").trim() !== oid) {
+                  const qs = new URLSearchParams({ storyId: sid, outlineId: oid, storyboardId: tid, sceneNo: "1" })
+                  router.replace(`/video/image?${qs.toString()}`)
+                  return
+                }
+              }}
               onOpenFrameImage={openFrameImagePreview}
               timelineSegments={timelineSegments}
               videoAssetGroups={activeTab === "video" ? videoAssetGroups : undefined}
@@ -298,8 +414,14 @@ export function CreateWorkspacePage({
         onSubmit={(value) => {
           const trimmed = value.trim()
           if (!trimmed) return
-          if (addModal.kind === "role") setRoles((p) => uniqueStrings([...p, trimmed]))
-          if (addModal.kind === "item") setRoleItems((p) => uniqueStrings([...p, trimmed]))
+          if (addModal.kind === "role") {
+            setRoles((p) => uniqueStrings([...p, trimmed]))
+            void applyScriptPatch({ storyboardId: activeStoryboardId, op: "add", category: "role", name: trimmed })
+          }
+          if (addModal.kind === "item") {
+            setRoleItems((p) => uniqueStrings([...p, trimmed]))
+            void applyScriptPatch({ storyboardId: activeStoryboardId, op: "add", category: "item", name: trimmed })
+          }
           if (addModal.kind === "background") setSceneText(trimmed)
           setAddModal((p) => ({ ...p, open: false }))
         }}

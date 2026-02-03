@@ -12,9 +12,9 @@ type StoryboardTableRowProps = {
   generationState?: ScriptGenerateState
   onSelect: (id: string) => void
   previews?: {
-    role: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
-    background: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
-    item: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
+    role: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
+    background: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
+    item: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
   }
   onPreviewImage: (
     title: string,
@@ -26,6 +26,7 @@ type StoryboardTableRowProps = {
     prompt?: string | null
   ) => void
   onPickAsset?: (params: { storyboardId: string; category: "role" | "background" | "item"; title: string; entityName: string }) => void
+  onDeleteAsset?: (params: { storyboardId: string; category: "role" | "item"; name: string; imageId: string; isGlobal?: boolean }) => Promise<void> | void
   onGenerateReferenceImages?: (storyboardId: string) => void
   refImageGenerating?: boolean
   onOpenEdit: (itemId: string, initialValue: string) => void
@@ -40,6 +41,7 @@ export function StoryboardTableRow({
   previews,
   onPreviewImage,
   onPickAsset,
+  onDeleteAsset,
   onGenerateReferenceImages,
   refImageGenerating,
   onOpenEdit,
@@ -49,9 +51,45 @@ export function StoryboardTableRow({
   const [moreKind, setMoreKind] = useState<"role" | "background" | "item">("background")
   const [moreLabel, setMoreLabel] = useState("")
   const [moreList, setMoreList] = useState<
-    Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
+    Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
   >([])
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmTarget, setConfirmTarget] = useState<{ category: "role" | "item"; name: string; imageId: string; isGlobal?: boolean } | null>(null)
   const canPortal = typeof document !== "undefined"
+  const isPlaceholderId = useCallback((id: string) => id.startsWith("placeholder:"), [])
+  const requestDelete = useCallback(
+    (p: { category: "role" | "item"; name: string; imageId: string; isGlobal?: boolean }) => {
+      if (!onDeleteAsset) return
+      if (deletingImageId) return
+      setConfirmTarget(p)
+      setConfirmOpen(true)
+    },
+    [deletingImageId, onDeleteAsset]
+  )
+
+  const confirmDelete = useCallback(async () => {
+    if (!onDeleteAsset) return
+    if (!confirmTarget) return
+    if (deletingImageId) return
+    setDeletingImageId(confirmTarget.imageId)
+    try {
+      await onDeleteAsset({
+        storyboardId: item.id,
+        category: confirmTarget.category,
+        name: confirmTarget.name,
+        imageId: confirmTarget.imageId,
+        isGlobal: confirmTarget.isGlobal
+      })
+      setConfirmOpen(false)
+      setConfirmTarget(null)
+    } catch (e) {
+      const anyErr = e as { message?: string }
+      alert(anyErr?.message ?? "删除失败")
+    } finally {
+      setDeletingImageId(null)
+    }
+  }, [confirmTarget, deletingImageId, item.id, onDeleteAsset])
 
   useEffect(() => {
     if (!moreOpen) return
@@ -63,12 +101,23 @@ export function StoryboardTableRow({
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [moreOpen])
 
+  useEffect(() => {
+    if (!confirmOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      setConfirmOpen(false)
+      setConfirmTarget(null)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [confirmOpen])
+
   const openMore = useCallback(
     (
       params: {
         kind: "role" | "background" | "item"
         label: string
-        list: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
+        list: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
       }
     ) => {
       setMoreKind(params.kind)
@@ -86,79 +135,140 @@ export function StoryboardTableRow({
   const hintToneClass =
     generationState?.tone === "error" ? styles.scriptHintError : generationState?.tone === "warn" ? styles.scriptHintWarn : styles.scriptHintInfo
 
+  const confirmTitle = useMemo(() => {
+    if (!confirmTarget) return "确认删除"
+    return `删除素材：${confirmTarget.name}`
+  }, [confirmTarget])
+
   const renderPreviewStack = (
-    list: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>,
+    list: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>,
     kind: "role" | "background" | "item",
     label: string
   ) => {
-    const visible = list.slice(0, 3)
-    const rest = Math.max(0, list.length - visible.length)
     const extracted = extractReferenceImagePrompts(item.scriptContent)
-    const firstByKind = extracted.find((p) => p.category === kind) ?? null
 
-    const shouldShowPlaceholder = (() => {
+    const isNarrator = (name: string) => {
+      const n = name.trim()
+      if (!n) return false
+      return n === "旁白" || n.toLowerCase() === "narrator"
+    }
+
+    const expectedEntities = (() => {
+      const promptEntities = extracted
+        .filter((p) => p.category === kind)
+        .map((p) => ({
+          name: (p.name ?? "").trim(),
+          prompt: (p.prompt ?? "").trim(),
+          description: ((p.description ?? "").trim() || (p.prompt ?? "").trim() || "").trim()
+        }))
+        .filter((p) => p.name)
+
+      if (promptEntities.length > 0) return promptEntities
+
+      if (kind === "background") {
+        const name = (item.shot_content?.background?.background_name ?? "").trim()
+        return name ? [{ name, prompt: "", description: "" }] : []
+      }
+
       if (kind === "role") {
         const roles = Array.isArray(item.shot_content?.roles) ? item.shot_content.roles : []
-        const isNarrator = (name: string) => {
-          const n = name.trim()
-          if (!n) return false
-          return n === "旁白" || n.toLowerCase() === "narrator"
+        const names = roles
+          .map((r) => (r && typeof r.role_name === "string" ? r.role_name.trim() : ""))
+          .filter((n) => n && !isNarrator(n))
+        const seen = new Set<string>()
+        return names
+          .filter((n) => {
+            if (seen.has(n)) return false
+            seen.add(n)
+            return true
+          })
+          .map((name) => ({ name, prompt: "", description: "" }))
+      }
+
+      const roleItems = Array.isArray(item.shot_content?.role_items) ? item.shot_content.role_items : []
+      const otherItems = Array.isArray(item.shot_content?.other_items) ? item.shot_content.other_items : []
+      const names = [...roleItems, ...otherItems].map((v) => (typeof v === "string" ? v.trim() : "")).filter(Boolean)
+      const seen = new Set<string>()
+      return names
+        .filter((n) => {
+          if (seen.has(n)) return false
+          seen.add(n)
+          return true
+        })
+        .map((name) => ({ name, prompt: "", description: "" }))
+    })()
+
+    const existingNames = new Set(list.map((img) => (img.name ?? "").trim()).filter(Boolean))
+    const placeholders = expectedEntities
+      .filter((e) => e.name && !existingNames.has(e.name))
+      .map((e) => {
+        const placeholderSrc = createPreviewSvgDataUrl(e.name, `镜头 ${item.scene_no} · ${label} · 未生成`)
+        return {
+          id: `placeholder:${kind}:${item.id}:${e.name}`,
+          name: e.name,
+          url: placeholderSrc,
+          thumbnailUrl: placeholderSrc,
+          category: kind,
+          storyboardId: item.id,
+          isGlobal: false,
+          description: e.description || null,
+          prompt: e.prompt || null
         }
-        const nonNarratorCount = roles.filter((r) => r && typeof r.role_name === "string" && !isNarrator(r.role_name)).length
-        return nonNarratorCount > 0
-      }
-      if (kind === "item") {
-        const roleItems = Array.isArray(item.shot_content?.role_items) ? item.shot_content.role_items.length : 0
-        const otherItems = Array.isArray(item.shot_content?.other_items) ? item.shot_content.other_items.length : 0
-        return roleItems + otherItems > 0
-      }
-      return true
-    })()
+      })
 
-    const fallbackName = (() => {
-      if (kind === "background") return item.shot_content?.background?.background_name?.trim() || label
-      if (kind === "role") return item.shot_content?.roles?.[0]?.role_name?.trim() || label
-      const roleItem = Array.isArray(item.shot_content?.role_items) ? item.shot_content.role_items[0] : ""
-      const otherItem = Array.isArray(item.shot_content?.other_items) ? item.shot_content.other_items[0] : ""
-      return (typeof roleItem === "string" && roleItem.trim()) || (typeof otherItem === "string" && otherItem.trim()) || label
-    })()
-
-    const entityTitle = (firstByKind?.name ?? "").trim() || fallbackName
-    const entityDescription = (firstByKind?.description ?? "").trim() || (firstByKind?.prompt ?? "").trim() || ""
-    const entityPrompt = (firstByKind?.prompt ?? "").trim() || ""
-
-    const placeholderSrc = createPreviewSvgDataUrl(entityTitle, `镜头 ${item.scene_no} · ${label} · 未生成`)
+    const displayList = [...list, ...placeholders]
+    const visible = displayList.slice(0, 3)
+    const rest = Math.max(0, displayList.length - visible.length)
     return (
       <div className={styles.previewStack}>
-        {visible.map((img) => (
-          <button
-            key={img.id}
-            type="button"
-            className={styles.previewThumb}
-            onClick={() => onPreviewImage(img.name, img.url, img.id, img.storyboardId ?? item.id, img.category ?? null, img.description, img.prompt)}
-            aria-label={`预览 ${img.name}`}
-          >
-            <img className={styles.previewThumbImg} src={img.thumbnailUrl ?? img.url} alt={img.name} />
-          </button>
-        ))}
+        {visible.map((img) => {
+          const canDelete = !isPlaceholderId(img.id) && kind !== "background"
+          return (
+            <div key={img.id} className={styles.previewThumbWrap}>
+              <button
+                type="button"
+                className={styles.previewThumb}
+                onClick={() =>
+                  onPreviewImage(
+                    img.name,
+                    img.url,
+                    isPlaceholderId(img.id) ? undefined : img.id,
+                    img.storyboardId ?? item.id,
+                    img.category ?? null,
+                    img.description,
+                    img.prompt
+                  )
+                }
+                aria-label={`预览 ${img.name}`}
+              >
+                <img className={styles.previewThumbImg} src={img.thumbnailUrl ?? img.url} alt={img.name} />
+              </button>
+              {canDelete ? (
+                <button
+                  type="button"
+                  className={styles.previewThumbDelete}
+                  aria-label={`删除 ${img.name}`}
+                  title="删除"
+                  disabled={Boolean(deletingImageId)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    requestDelete({ category: kind === "role" ? "role" : "item", name: img.name, imageId: img.id, isGlobal: img.isGlobal })
+                  }}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          )
+        })}
         {rest > 0 ? (
           <button
             type="button"
             className={`${styles.previewThumb} ${styles.previewThumbMore}`}
-            onClick={() => openMore({ kind, label, list })}
+            onClick={() => openMore({ kind, label, list: displayList })}
             aria-label={`查看全部${label}素材`}
           >
             +{rest}
-          </button>
-        ) : null}
-        {list.length === 0 && shouldShowPlaceholder ? (
-          <button
-            type="button"
-            className={`${styles.previewThumb} ${styles.previewThumbPlaceholder}`}
-            aria-label={`预览 镜头${item.scene_no}-${label}`}
-            onClick={() => onPreviewImage(entityTitle, placeholderSrc, undefined, item.id, kind, entityDescription || null, entityPrompt || null)}
-          >
-            <img className={`${styles.previewThumbImg} ${styles.previewThumbPlaceholderImg}`} src={placeholderSrc} alt="" />
           </button>
         ) : null}
         {kind !== "background" && onPickAsset ? (
@@ -166,7 +276,10 @@ export function StoryboardTableRow({
             type="button"
             className={`${styles.previewThumb} ${styles.previewThumbEmpty}`}
             aria-label={`为镜头 ${item.scene_no} 添加${label}素材`}
-            onClick={() => onPickAsset?.({ storyboardId: item.id, category: kind, title: `镜头${item.scene_no}-${label}`, entityName: entityTitle })}
+            onClick={() => {
+              const firstName = ((expectedEntities[0]?.name ?? "").trim() || label).trim()
+              onPickAsset?.({ storyboardId: item.id, category: kind, title: `镜头${item.scene_no}-${label}`, entityName: firstName })
+            }}
           >
             +
           </button>
@@ -272,22 +385,49 @@ export function StoryboardTableRow({
                   </button>
                 </div>
                 <div className={styles.moreGrid} aria-label="素材列表">
-                  {moreList.map((img) => (
-                    <button
-                      key={img.id}
-                      type="button"
-                      className={styles.moreItem}
-                      onClick={() => {
-                        setMoreOpen(false)
-                        onPreviewImage(img.name, img.url, img.id, img.storyboardId ?? item.id, img.category ?? null, img.description, img.prompt)
-                      }}
-                      aria-label={`预览 ${img.name}`}
-                      title={img.name}
-                    >
-                      <img className={styles.moreItemImg} src={img.thumbnailUrl ?? img.url} alt={img.name} />
-                      <div className={styles.moreItemName}>{img.name}</div>
-                    </button>
-                  ))}
+                  {moreList.map((img) => {
+                    const canDelete = !isPlaceholderId(img.id) && moreKind !== "background"
+                    return (
+                      <div key={img.id} className={styles.moreItemWrap}>
+                        <button
+                          type="button"
+                          className={styles.moreItem}
+                          onClick={() => {
+                            setMoreOpen(false)
+                            onPreviewImage(
+                              img.name,
+                              img.url,
+                              isPlaceholderId(img.id) ? undefined : img.id,
+                              img.storyboardId ?? item.id,
+                              img.category ?? null,
+                              img.description,
+                              img.prompt
+                            )
+                          }}
+                          aria-label={`预览 ${img.name}`}
+                          title={img.name}
+                        >
+                          <img className={styles.moreItemImg} src={img.thumbnailUrl ?? img.url} alt={img.name} />
+                          <div className={styles.moreItemName}>{img.name}</div>
+                        </button>
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            className={styles.moreItemDelete}
+                            aria-label={`删除 ${img.name}`}
+                            title="删除"
+                            disabled={Boolean(deletingImageId)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              requestDelete({ category: moreKind === "role" ? "role" : "item", name: img.name, imageId: img.id, isGlobal: img.isGlobal })
+                            }}
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                      </div>
+                    )
+                  })}
                 </div>
                 {moreKind !== "background" && onPickAsset ? (
                   <div className={styles.moreFooter}>
@@ -304,6 +444,70 @@ export function StoryboardTableRow({
                     </button>
                   </div>
                 ) : null}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+      {canPortal && confirmOpen
+        ? createPortal(
+            <div
+              className={styles.confirmOverlay}
+              role="presentation"
+              onClick={() => {
+                if (deletingImageId) return
+                setConfirmOpen(false)
+                setConfirmTarget(null)
+              }}
+            >
+              <div
+                className={styles.confirmModal}
+                role="dialog"
+                aria-modal="true"
+                aria-label={confirmTitle}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className={styles.confirmHeader}>
+                  <div className={styles.confirmTitle}>{confirmTitle}</div>
+                  <button
+                    type="button"
+                    className={styles.confirmCloseBtn}
+                    onClick={() => {
+                      if (deletingImageId) return
+                      setConfirmOpen(false)
+                      setConfirmTarget(null)
+                    }}
+                    aria-label="关闭"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className={styles.confirmBody}>
+                  <div className={styles.confirmDesc}>
+                    {confirmTarget?.isGlobal ? "删除后可能影响其他镜头复用。" : "删除后将从该镜头脚本中移除对应实体。"}
+                  </div>
+                </div>
+                <div className={styles.confirmActions}>
+                  <button
+                    type="button"
+                    className={styles.confirmBtn}
+                    disabled={Boolean(deletingImageId)}
+                    onClick={() => {
+                      setConfirmOpen(false)
+                      setConfirmTarget(null)
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.confirmBtn} ${styles.confirmBtnDanger}`}
+                    disabled={Boolean(deletingImageId) || !confirmTarget}
+                    onClick={() => void confirmDelete()}
+                  >
+                    删除
+                  </button>
+                </div>
               </div>
             </div>,
             document.body

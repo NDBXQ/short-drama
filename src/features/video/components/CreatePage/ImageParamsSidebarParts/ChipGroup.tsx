@@ -1,3 +1,5 @@
+"use client"
+
 import type { ReactElement, ReactNode } from "react"
 import styles from "../ImageParamsSidebar.module.css"
 
@@ -11,4 +13,3 @@ export function ChipGroup({ title, children }: { title: string; children: ReactN
     </div>
   )
 }
-

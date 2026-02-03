@@ -30,6 +30,8 @@ type ScriptWorkspacePageProps = Readonly<{
 export function ScriptWorkspacePage({ mode, storyId, outline, outlines }: ScriptWorkspacePageProps): ReactElement {
   const router = useRouter()
   const gridRef = useRef<HTMLDivElement | null>(null)
+  const [isCompact, setIsCompact] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   const outlineIndex = (() => {
     const parsed = Number(outline)
     if (!Number.isFinite(parsed)) return 1
@@ -42,6 +44,18 @@ export function ScriptWorkspacePage({ mode, storyId, outline, outlines }: Script
   useEffect(() => {
     setLocalOutlines(outlines.slice())
   }, [outlines])
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1023px)")
+    const sync = () => setIsCompact(query.matches)
+    sync()
+    query.addEventListener("change", sync)
+    return () => query.removeEventListener("change", sync)
+  }, [])
+
+  useEffect(() => {
+    if (!isCompact) setChatOpen(false)
+  }, [isCompact])
 
   const activeOutline = localOutlines.find((o) => o.sequence === outlineIndex) ?? localOutlines[0] ?? null
 
@@ -103,14 +117,13 @@ export function ScriptWorkspacePage({ mode, storyId, outline, outlines }: Script
 
   const handleManualGenerate = useCallback(() => {
     if (!activeOutline) return
-    const outlineId = activeOutline.outlineId
-    router.push(`/video?tab=list&storyId=${encodeURIComponent(storyId)}&outlineId=${encodeURIComponent(outlineId)}&autoGenerate=script`)
+    router.push(`/video?tab=list&storyId=${encodeURIComponent(storyId)}&autoGenerate=script`)
   }, [activeOutline, router, storyId])
 
   return (
     <main className={styles.main}>
       <section className={styles.gridFrame}>
-        <div className={styles.grid} ref={gridRef}>
+        <div className={isCompact ? `${styles.grid} ${styles.gridCompact}` : styles.grid} ref={gridRef}>
           <OutlineNav
             outlines={localOutlines}
             activeOutline={activeOutline}
@@ -133,27 +146,72 @@ export function ScriptWorkspacePage({ mode, storyId, outline, outlines }: Script
             handleManualGenerate={handleManualGenerate}
           />
 
-          <WorkspaceResizeHandle containerRef={gridRef} />
+          {!isCompact ? <WorkspaceResizeHandle containerRef={gridRef} /> : null}
 
-          <ChatSidebar
-            rewriteMessages={rewriteMessages}
-            rewriteRequirements={rewriteRequirements}
-            setRewriteRequirements={setRewriteRequirements}
-            handleRewrite={handleRewrite}
-            activeOutline={activeOutline}
-            isRewriteStreaming={isRewriteStreaming}
-            toast={toast}
-            threadRef={threadRef}
-            onScrollThread={() => {
-              const el = threadRef.current
-              if (!el) return
-              const threshold = 24
-              const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold
-              shouldAutoScrollRef.current = atBottom
-            }}
-          />
+          {!isCompact ? (
+            <ChatSidebar
+              rewriteMessages={rewriteMessages}
+              rewriteRequirements={rewriteRequirements}
+              setRewriteRequirements={setRewriteRequirements}
+              handleRewrite={handleRewrite}
+              activeOutline={activeOutline}
+              isRewriteStreaming={isRewriteStreaming}
+              toast={toast}
+              threadRef={threadRef}
+              onScrollThread={() => {
+                const el = threadRef.current
+                if (!el) return
+                const threshold = 24
+                const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold
+                shouldAutoScrollRef.current = atBottom
+              }}
+            />
+          ) : (
+            <div className={styles.chatPlaceholder} aria-hidden="true" />
+          )}
         </div>
       </section>
+
+      {isCompact ? (
+        <>
+          <button type="button" className={styles.chatFab} onClick={() => setChatOpen(true)}>
+            对话
+          </button>
+          {chatOpen ? (
+            <div
+              className={styles.drawerBackdrop}
+              role="dialog"
+              aria-modal="true"
+              aria-label="对话助手"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setChatOpen(false)
+              }}
+            >
+              <div className={`${styles.drawer} ${styles.drawerRight}`}>
+                <ChatSidebar
+                  variant="drawer"
+                  onClose={() => setChatOpen(false)}
+                  rewriteMessages={rewriteMessages}
+                  rewriteRequirements={rewriteRequirements}
+                  setRewriteRequirements={setRewriteRequirements}
+                  handleRewrite={handleRewrite}
+                  activeOutline={activeOutline}
+                  isRewriteStreaming={isRewriteStreaming}
+                  toast={toast}
+                  threadRef={threadRef}
+                  onScrollThread={() => {
+                    const el = threadRef.current
+                    if (!el) return
+                    const threshold = 24
+                    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold
+                    shouldAutoScrollRef.current = atBottom
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : null}
 
       {confirmDeleteOutlineId ? (
         <div

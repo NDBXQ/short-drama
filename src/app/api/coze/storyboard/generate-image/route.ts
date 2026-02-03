@@ -10,6 +10,7 @@ import { generateImageByCoze } from "@/features/coze/imageClient"
 import { downloadImage, generateThumbnail } from "@/lib/thumbnail"
 import { createCozeS3Storage } from "@/server/integrations/storage/s3"
 import { mergeStoryboardFrames } from "@/server/services/storyboardAssets"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 
 const inputSchema = z.object({
   storyId: z.string().min(1),
@@ -71,10 +72,7 @@ export async function POST(req: Request): Promise<Response> {
       fileName: originalFileKey,
       contentType: 'image/jpeg',
     })
-    const originalSignedUrl = await storage.generatePresignedUrl({
-      key: uploadedOriginalKey,
-      expireTime: 604800, // 7 days
-    })
+    const originalSignedUrl = await resolveStorageUrl(storage, uploadedOriginalKey)
 
     // Upload Thumbnail
     const uploadedThumbnailKey = await storage.uploadFile({
@@ -82,10 +80,7 @@ export async function POST(req: Request): Promise<Response> {
       fileName: thumbnailFileKey,
       contentType: 'image/jpeg',
     })
-    const thumbnailSignedUrl = await storage.generatePresignedUrl({
-      key: uploadedThumbnailKey,
-      expireTime: 604800, // 7 days
-    })
+    const thumbnailSignedUrl = await resolveStorageUrl(storage, uploadedThumbnailKey)
 
     // 5. Save to DB
     const db = await getDb({ storyboards, generatedImages })

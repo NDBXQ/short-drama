@@ -1,20 +1,21 @@
 .card {
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--theme-border);
   border-radius: 18px;
   overflow: hidden;
   transition: all 0.2s;
   cursor: pointer;
   position: relative;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: var(--theme-blur);
 }
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.06);
-  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 18px 52px rgba(2, 6, 23, 0.45);
+  border-color: rgba(109, 94, 247, 0.35);
 }
 
 /* 列表视图模式 */
@@ -30,7 +31,7 @@
   height: 100%;
   aspect-ratio: auto;
   flex-shrink: 0;
-  border-right: 1px solid #f1f5f9;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .cardList .info {
@@ -69,7 +70,7 @@
 /* 原始样式 */
 .preview {
   aspect-ratio: 16/9;
-  background: #f8fafc;
+  background: rgba(2, 6, 23, 0.45);
   position: relative;
   overflow: hidden;
 }
@@ -86,7 +87,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #cbd5e1;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .typeTag {
@@ -94,17 +95,17 @@
   top: 10px;
   left: 10px;
   padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(4px);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 800;
-  color: #0f172a;
+  color: rgba(255, 255, 255, 0.92);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--theme-border);
   max-width: calc(100% - 20px);
 }
 
@@ -120,12 +121,12 @@
   top: 10px;
   right: 10px;
   padding: 4px 8px;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(255, 255, 255, 0.10);
   backdrop-filter: blur(4px);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .checkbox {
@@ -135,12 +136,12 @@
   width: 20px;
   height: 20px;
   border-radius: 6px;
-  border: 2px solid rgba(15, 23, 42, 0.2);
-  background: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: rgba(2, 6, 23, 0.35);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.2s;
-  accent-color: #2563eb;
+  accent-color: rgba(109, 94, 247, 0.92);
 }
 
 .viewContentBtn {
@@ -150,10 +151,10 @@
   height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(6px);
-  color: #111827;
+  color: rgba(255, 255, 255, 0.92);
   font-size: 12px;
   font-weight: 800;
   display: inline-flex;
@@ -169,7 +170,7 @@
 }
 
 .viewContentBtn:hover {
-  border-color: rgba(37, 99, 235, 0.25);
+  border-color: rgba(109, 94, 247, 0.35);
   transform: translateY(-1px);
 }
 
@@ -192,7 +193,7 @@
 
 .subtitle {
   font-size: 12px;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.52);
   line-height: 1.5;
   font-weight: 500;
 }
@@ -202,14 +203,14 @@
   flex-direction: column;
   gap: 2px;
   font-size: 12px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.62);
   font-weight: 500;
 }
 
 .title {
   font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: rgba(255, 255, 255, 0.92);
   margin: 0 0 8px;
   line-height: 1.4;
   display: -webkit-box;

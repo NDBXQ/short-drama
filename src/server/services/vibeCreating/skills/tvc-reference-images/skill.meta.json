@@ -1,0 +1,19 @@
+{
+  "name": "tvc-reference-images",
+  "version": "1.0.0",
+  "description": "批量生成TVC参考图片，支持文生图和图生图，使用并发提升效率",
+  "tags": ["tvc", "images", "batch", "concurrent"],
+  "context_budget_tokens": 4000,
+  "allowed_tools": ["image.generate_batch", "image.generate_from_ref"],
+  "model": "",
+  "owner": "Vibe Creating",
+  "last_updated": "2024-01-20",
+  "dependencies": ["tvc-storyboard"],
+  "triggers": [
+    "继续",
+    "下一步",
+    "生成图片",
+    "参考图",
+    "视觉参考"
+  ]
+}

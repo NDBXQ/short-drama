@@ -9,22 +9,22 @@
   overflow: auto;
   padding: 0;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  background: rgba(15, 23, 42, 0.01);
+  border: 1px solid var(--theme-border);
+  background: rgba(2, 6, 23, 0.22);
 }
 
 .audioItem {
   height: 34px;
   border-radius: 14px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   padding: 0 10px 0 8px;
   font-size: 12px;
   font-weight: 800;
-  color: rgba(15, 23, 42, 0.82);
+  color: var(--theme-text);
   cursor: grab;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -36,15 +36,15 @@
 }
 
 .audioItem:hover {
-  background: rgba(79, 70, 229, 0.10);
-  border-color: rgba(79, 70, 229, 0.28);
+  background: rgba(109, 94, 247, 0.14);
+  border-color: rgba(109, 94, 247, 0.35);
 }
 
 .audioGrip {
   width: 14px;
   height: 14px;
   border-radius: 6px;
-  background-image: radial-gradient(circle, rgba(15, 23, 42, 0.28) 1px, transparent 1.4px);
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.22) 1px, transparent 1.4px);
   background-size: 4px 4px;
   background-position: 0 0;
   flex-shrink: 0;
@@ -70,7 +70,7 @@
 .audioSubText {
   font-size: 11px;
   font-weight: 800;
-  color: rgba(15, 23, 42, 0.55);
+  color: var(--theme-text-faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -80,9 +80,9 @@
   width: 28px;
   height: 22px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.16);
-  background: rgba(255, 255, 255, 0.9);
-  color: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--theme-text-strong);
   font-size: 10px;
   font-weight: 900;
   cursor: pointer;
@@ -90,6 +90,6 @@
 }
 
 .audioPreviewBtn:hover {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.30);
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.32);
 }

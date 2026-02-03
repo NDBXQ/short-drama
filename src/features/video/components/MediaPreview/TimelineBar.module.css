@@ -5,14 +5,64 @@
   padding: 8px 12px;
   margin: 0;
   border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 16px 44px -26px rgba(15, 23, 42, 0.25);
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: var(--theme-blur);
   display: grid;
   grid-template-columns: 32px 1fr 32px;
   align-items: center;
   gap: 8px;
   align-content: start;
+}
+
+.filmstripEpisodes {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  --episode-row-h: 56px;
+  --episode-row-gap: 10px;
+}
+
+.episodeList {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 10px;
+  padding-right: 2px;
+  height: 100%;
+}
+
+.episodeList::-webkit-scrollbar {
+  display: none;
+}
+
+.episodeList {
+  scrollbar-width: none;
+}
+
+.episodeRow {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.episodeLabel {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--theme-text-muted);
+  white-space: nowrap;
+  padding: 0 10px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.episodeThumbs {
+  grid-auto-columns: 110px;
 }
 
 .filmstripEditor {
@@ -22,9 +72,10 @@
   align-items: stretch;
   border-top: none;
   border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 16px 44px -26px rgba(15, 23, 42, 0.25);
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: var(--theme-blur);
 }
 
 .editorOnly {
@@ -44,8 +95,8 @@
   gap: 10px;
   padding: 6px 8px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .timelineWrap {
@@ -62,8 +113,8 @@
   height: 14px;
   border-radius: 999px;
   overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
   display: flex;
   position: relative;
 }
@@ -71,26 +122,26 @@
 .timelineSeg {
   height: 100%;
   border: 0;
-  background: rgba(109, 94, 247, 0.10);
-  color: rgba(15, 23, 42, 0.62);
+  background: rgba(109, 94, 247, 0.12);
+  color: var(--theme-text-muted);
   cursor: pointer;
   padding: 0 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 22px;
-  box-shadow: inset -1px 0 0 rgba(15, 23, 42, 0.05);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
   transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 .timelineSeg:hover {
-  background: rgba(109, 94, 247, 0.16);
-  color: rgba(15, 23, 42, 0.82);
+  background: rgba(109, 94, 247, 0.18);
+  color: var(--theme-text-strong);
 }
 
 .timelineSegMissing {
   background: rgba(100, 116, 139, 0.14);
-  color: rgba(100, 116, 139, 0.85);
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .timelineSegMissing:hover {
@@ -98,8 +149,8 @@
 }
 
 .timelineSegActive {
-  background: rgba(79, 70, 229, 0.26);
-  color: rgba(15, 23, 42, 0.86);
+  background: rgba(109, 94, 247, 0.24);
+  color: var(--theme-text-strong);
 }
 
 .timelineSegText {
@@ -114,21 +165,21 @@
   top: -3px;
   width: 2px;
   height: 24px;
-  background: rgba(79, 70, 229, 0.95);
+  background: rgba(109, 94, 247, 0.95);
   transform: translateX(-1px);
 }
 
 .timelineMeta {
   font-size: 12px;
-  color: rgba(15, 23, 42, 0.62);
+  color: var(--theme-text-muted);
   white-space: nowrap;
   height: 24px;
   display: inline-flex;
   align-items: center;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(255, 255, 255, 0.70);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .timelineActions {
@@ -141,48 +192,48 @@
   height: 34px;
   padding: 0 12px;
   border-radius: 12px;
-  border: 1px solid rgba(109, 94, 247, 0.65);
-  background: #4f46e5;
-  color: #fff;
+  border: 1px solid rgba(109, 94, 247, 0.26);
+  background: linear-gradient(135deg, rgba(123, 97, 255, 0.95) 0%, rgba(79, 70, 229, 0.92) 100%);
+  color: rgba(255, 255, 255, 0.96);
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
 }
 
 .previewAllBtn:hover {
-  background: #4338ca;
+  background: linear-gradient(135deg, rgba(123, 97, 255, 1) 0%, rgba(79, 70, 229, 0.98) 100%);
 }
 
 .previewAllBtnGhost {
   height: 34px;
   padding: 0 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(15, 23, 42, 0.03);
-  color: rgba(15, 23, 42, 0.86);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--theme-text-strong);
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
 }
 
 .previewAllBtnGhost:hover {
-  background: #fff;
-  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--theme-border-strong);
 }
 
 .navBtn {
   width: 32px;
   height: 32px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(15, 23, 42, 0.03);
-  color: rgba(15, 23, 42, 0.86);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--theme-text-strong);
   cursor: pointer;
 }
 
 .navBtn:hover {
-  background: #fff;
-  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--theme-border-strong);
 }
 
 .thumbs {
@@ -208,8 +259,8 @@
 .thumb {
   height: 56px;
   border-radius: 14px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(255, 255, 255, 0.80);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
   overflow: hidden;
   cursor: pointer;
   display: flex;
@@ -217,7 +268,7 @@
   justify-content: flex-start;
   gap: 10px;
   padding: 0 10px;
-  color: var(--text-secondary);
+  color: var(--theme-text-muted);
   font-size: 12px;
   font-weight: 900;
   transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
@@ -228,8 +279,8 @@
   height: 36px;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--theme-border);
+  background: rgba(2, 6, 23, 0.35);
   flex-shrink: 0;
 }
 
@@ -249,13 +300,13 @@
 }
 
 .thumb:hover {
-  background: #fff;
-  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--theme-border-strong);
 }
 
 .thumbActive {
   border-color: rgba(109, 94, 247, 0.55);
   box-shadow: 0 0 0 3px rgba(109, 94, 247, 0.14);
-  background: rgba(109, 94, 247, 0.10);
-  color: rgba(15, 23, 42, 0.86);
+  background: rgba(109, 94, 247, 0.16);
+  color: var(--theme-text-strong);
 }

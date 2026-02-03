@@ -11,7 +11,9 @@ function normalizeCategory(input: unknown): "background" | "role" | "item" {
 export function SidePanel({
   open,
   title,
+  metaTitle,
   description,
+  metaDescription,
   prompt,
   storyboardId,
   category,
@@ -32,7 +34,9 @@ export function SidePanel({
 }: {
   open: boolean
   title: string
+  metaTitle?: string | null
   description?: string | null
+  metaDescription?: string | null
   prompt?: string | null
   storyboardId?: string | null
   category?: string | null
@@ -65,9 +69,13 @@ export function SidePanel({
   const [inpaintLoading, setInpaintLoading] = useState(false)
   const [inpaintError, setInpaintError] = useState<string | null>(null)
 
+  const displayTitle = useMemo(() => {
+    return (metaTitle ?? "").trim() || title
+  }, [metaTitle, title])
+
   const displayDescription = useMemo(() => {
-    return (description ?? "").trim() || (prompt ?? "").trim() || "暂无描述"
-  }, [description, prompt])
+    return (metaDescription ?? "").trim() || (description ?? "").trim() || (prompt ?? "").trim() || "暂无描述"
+  }, [description, metaDescription, prompt])
 
   const normalizedCategory = useMemo(() => normalizeCategory(category), [category])
 
@@ -313,7 +321,7 @@ export function SidePanel({
         {regenerateError ? <div className={styles.panelError}>{regenerateError}</div> : null}
         {deleteError ? <div className={styles.panelError}>{deleteError}</div> : null}
         {inpaintError ? <div className={styles.panelError}>{inpaintError}</div> : null}
-        <div className={styles.metaTitle}>{title}</div>
+        <div className={styles.metaTitle}>{displayTitle}</div>
         <div className={styles.metaDescription}>{displayDescription}</div>
       </div>
     </div>

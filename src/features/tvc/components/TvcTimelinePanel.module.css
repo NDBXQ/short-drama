@@ -1,0 +1,181 @@
+.panel {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.header {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.title {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.controlBtn {
+  height: 32px;
+  border-radius: 12px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.controlBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.body {
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 10px;
+}
+
+.track {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(2, 6, 23, 0.45);
+  padding: 10px;
+  overflow: auto;
+}
+
+.clips {
+  display: flex;
+  gap: 8px;
+  min-width: max-content;
+}
+
+.empty {
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.62);
+  padding: 4px 2px;
+}
+
+.clipBtn {
+  width: 120px;
+  height: 58px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(2, 6, 23, 0.06) 100%);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  padding: 8px 8px;
+  display: grid;
+  align-content: space-between;
+  text-align: left;
+}
+
+.clipBtn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90px 60px at 35% 35%, rgba(123, 97, 255, 0.35) 0%, rgba(2, 6, 23, 0.0) 68%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.clipBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.clipBtnActive {
+  border-color: rgba(109, 94, 247, 0.35);
+  box-shadow: 0 16px 40px rgba(79, 70, 229, 0.18);
+}
+
+.clipTop {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.clipLabel {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.90);
+}
+
+.clipCut {
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.clipMeta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.clipPill {
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(2, 6, 23, 0.35);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+}
+
+.wave {
+  height: 44px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(2, 6, 23, 0.45);
+  display: grid;
+  align-items: center;
+  padding: 10px 10px;
+  overflow: hidden;
+}
+
+.waveBar {
+  height: 18px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.10) 0px,
+    rgba(255, 255, 255, 0.10) 6px,
+    rgba(255, 255, 255, 0.04) 6px,
+    rgba(255, 255, 255, 0.04) 12px
+  );
+  mask-image: radial-gradient(120px 40px at 25% 50%, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 70%),
+    radial-gradient(160px 40px at 60% 50%, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 75%),
+    radial-gradient(120px 40px at 85% 50%, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 70%);
+}

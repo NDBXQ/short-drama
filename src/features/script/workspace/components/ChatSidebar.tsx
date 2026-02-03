@@ -7,6 +7,8 @@ import styles from "./ChatSidebar.module.css"
 import type { ThreadMessage, OutlineItem } from "../utils"
 
 type ChatSidebarProps = Readonly<{
+  variant?: "inline" | "drawer"
+  onClose?: () => void
   rewriteMessages: ReadonlyArray<ThreadMessage>
   rewriteRequirements: string
   setRewriteRequirements: (val: string) => void
@@ -24,6 +26,8 @@ type ChatSidebarProps = Readonly<{
  * @returns {JSX.Element} 组件内容
  */
 export function ChatSidebar({
+  variant = "inline",
+  onClose,
   rewriteMessages,
   rewriteRequirements,
   setRewriteRequirements,
@@ -35,10 +39,15 @@ export function ChatSidebar({
   onScrollThread
 }: ChatSidebarProps) {
   return (
-    <aside className={styles.sidebar}>
+    <aside className={variant === "drawer" ? `${styles.sidebar} ${styles.sidebarDrawer}` : styles.sidebar}>
       <div className={styles.sidebarHeader}>
         <div className={styles.sidebarTitle}>剧本创作</div>
         <div className={styles.sidebarActions}>
+          {onClose ? (
+            <button type="button" className={styles.closeBtn} aria-label="关闭" onClick={onClose}>
+              ×
+            </button>
+          ) : null}
           <Link href="/library" className={styles.backLink}>
             去内容库
           </Link>
@@ -85,11 +94,16 @@ export function ChatSidebar({
           <div className={styles.composerRow}>
             <textarea
               className={styles.textarea}
-              placeholder="例如：强化人物情感线，增加对话与细节描写…"
+              placeholder="想改哪里？直接说…（Enter 改写 / Shift+Enter 换行）"
               rows={2}
               value={rewriteRequirements}
               onChange={(e) => setRewriteRequirements(e.target.value)}
               onKeyDown={(e) => {
+                if (e.key === "Escape" && isRewriteStreaming) {
+                  e.preventDefault()
+                  handleRewrite()
+                  return
+                }
                 if (e.key !== "Enter") return
                 if (e.shiftKey) return
                 if ((e.nativeEvent as unknown as { isComposing?: boolean })?.isComposing) return
@@ -106,6 +120,7 @@ export function ChatSidebar({
               {isRewriteStreaming ? "停止" : "改写"}
             </button>
           </div>
+          <div className={styles.helper}>Enter 改写，Shift+Enter 换行，Esc 停止。</div>
         </div>
       </div>
 

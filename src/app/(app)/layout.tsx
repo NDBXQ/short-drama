@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from "react"
+import { Suspense, type ReactElement, type ReactNode } from "react"
 import { AppHeader } from "@/components/app-header/AppHeader"
 import styles from "./layout.module.css"
 
@@ -15,7 +15,9 @@ export default function AppLayout({
 }>): ReactElement {
   return (
     <div className={styles.shell}>
-      <AppHeader />
+      <Suspense fallback={null}>
+        <AppHeader />
+      </Suspense>
       <div className={styles.page}>{children}</div>
     </div>
   )

@@ -8,6 +8,8 @@ type Props = {
   mode: "image" | "video"
   activeId: string
   thumbnails: Thumbnail[]
+  episodeThumbnailRows?: Array<{ outlineId: string; title: string; thumbnails: Thumbnail[] }>
+  onEpisodeThumbnailClick?: (p: { outlineId: string; storyboardId: string }) => void
   onThumbnailClick: (id: string) => void
   timelineSegments: TimelineSegment[]
   segmentFirstFrames?: Record<string, string>
@@ -31,6 +33,8 @@ export function TimelineBar({
   mode,
   activeId,
   thumbnails,
+  episodeThumbnailRows,
+  onEpisodeThumbnailClick,
   onThumbnailClick,
   timelineSegments,
   segmentFirstFrames,
@@ -52,9 +56,14 @@ export function TimelineBar({
   const thumbsRef = useRef<HTMLDivElement>(null)
   const isVideoTab = mode === "video"
   const hasTimeline = timelineSegments.length > 0
+  const episodeRows = Array.isArray(episodeThumbnailRows) ? episodeThumbnailRows : []
+  const hasEpisodeRows = !isVideoTab && episodeRows.length > 0
 
   return (
-    <div className={`${styles.filmstrip} ${isVideoTab ? styles.filmstripEditor : ""}`} aria-label="缩略图列表">
+    <div
+      className={`${styles.filmstrip} ${isVideoTab ? styles.filmstripEditor : ""} ${hasEpisodeRows ? styles.filmstripEpisodes : ""}`}
+      aria-label="缩略图列表"
+    >
       {isVideoTab ? (
         <div className={styles.editorOnly} aria-label="剪辑轨道区">
           <VideoTimelineEditor
@@ -72,6 +81,37 @@ export function TimelineBar({
         </div>
       ) : (
         <>
+          {hasEpisodeRows ? (
+            <div className={styles.episodeList} aria-label="按集分组的分镜缩略图">
+              {episodeRows.map((row) => (
+                <div key={row.outlineId} className={styles.episodeRow} aria-label={row.title}>
+                  <div className={styles.episodeLabel}>{row.title}</div>
+                  <div className={`${styles.thumbs} ${styles.episodeThumbs}`} role="list">
+                    {row.thumbnails.map((it) => (
+                      <button
+                        key={it.id}
+                        type="button"
+                        className={`${styles.thumb} ${it.id === activeId ? styles.thumbActive : ""}`}
+                        onClick={() => {
+                          const oid = (row.outlineId ?? "").trim()
+                          if (onEpisodeThumbnailClick && oid) {
+                            onEpisodeThumbnailClick({ outlineId: oid, storyboardId: it.id })
+                            return
+                          }
+                          onThumbnailClick(it.id)
+                        }}
+                      >
+                        <span className={styles.thumbImgWrap} aria-hidden="true">
+                          <img className={styles.thumbImg} src={it.firstFrameSrc ?? it.imageSrc} alt="" loading="lazy" />
+                        </span>
+                        <span className={styles.thumbText}>{it.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {hasTimeline ? (
             <div className={styles.timelineRow} aria-label="分镜时间轴">
               <div className={styles.timelineWrap}>
@@ -137,37 +177,41 @@ export function TimelineBar({
               </div>
             </div>
           ) : null}
-          <button
-            type="button"
-            className={styles.navBtn}
-            aria-label="上一张"
-            onClick={() => thumbsRef.current?.scrollBy({ left: -132, behavior: "smooth" })}
-          >
-            ‹
-          </button>
-          <div className={styles.thumbs} ref={thumbsRef}>
-            {thumbnails.map((it) => (
+          {!hasEpisodeRows ? (
+            <>
               <button
-                key={it.id}
                 type="button"
-                className={`${styles.thumb} ${it.id === activeId ? styles.thumbActive : ""}`}
-                onClick={() => onThumbnailClick(it.id)}
+                className={styles.navBtn}
+                aria-label="上一张"
+                onClick={() => thumbsRef.current?.scrollBy({ left: -132, behavior: "smooth" })}
               >
-                <span className={styles.thumbImgWrap} aria-hidden="true">
-                  <img className={styles.thumbImg} src={it.firstFrameSrc ?? it.imageSrc} alt="" loading="lazy" />
-                </span>
-                <span className={styles.thumbText}>{it.title}</span>
+                ‹
               </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            className={styles.navBtn}
-            aria-label="下一张"
-            onClick={() => thumbsRef.current?.scrollBy({ left: 132, behavior: "smooth" })}
-          >
-            ›
-          </button>
+              <div className={styles.thumbs} ref={thumbsRef}>
+                {thumbnails.map((it) => (
+                  <button
+                    key={it.id}
+                    type="button"
+                    className={`${styles.thumb} ${it.id === activeId ? styles.thumbActive : ""}`}
+                    onClick={() => onThumbnailClick(it.id)}
+                  >
+                    <span className={styles.thumbImgWrap} aria-hidden="true">
+                      <img className={styles.thumbImg} src={it.firstFrameSrc ?? it.imageSrc} alt="" loading="lazy" />
+                    </span>
+                    <span className={styles.thumbText}>{it.title}</span>
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className={styles.navBtn}
+                aria-label="下一张"
+                onClick={() => thumbsRef.current?.scrollBy({ left: 132, behavior: "smooth" })}
+              >
+                ›
+              </button>
+            </>
+          ) : null}
         </>
       )}
     </div>

@@ -1,9 +1,7 @@
 .shell {
   min-height: 100vh;
-  background: radial-gradient(1200px 700px at 12% 10%, rgba(123, 97, 255, 0.14) 0%, rgba(123, 97, 255, 0) 55%),
-    radial-gradient(900px 600px at 85% 30%, rgba(91, 95, 245, 0.1) 0%, rgba(91, 95, 245, 0) 55%),
-    #f6f7fb;
-  color: #0f172a;
+  background: var(--theme-bg);
+  color: var(--theme-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   display: flex;
   flex-direction: row;
@@ -15,12 +13,12 @@
   width: auto;
   max-width: none;
   margin: 0;
-  padding: 0;
+  padding: var(--app-page-padding, 12px);
   flex: 1;
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  overflow: visible;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }

@@ -1,17 +1,29 @@
 .hint {
   position: relative;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(15, 23, 42, 0.03);
-  color: rgba(15, 23, 42, 0.72);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--theme-text-strong);
   display: inline-grid;
   place-items: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   line-height: 1;
   flex: none;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.hint:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: var(--theme-border-strong);
+}
+
+.hint:focus-visible {
+  outline: 2px solid rgba(109, 94, 247, 0.55);
+  outline-offset: 2px;
 }
 
 .tooltip {

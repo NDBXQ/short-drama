@@ -7,7 +7,7 @@ interface BulkActionBarProps {
   selectedCount: number
   deleting: boolean
   onClear: () => void
-  onDelete: () => void
+  onDelete?: () => void
 }
 
 export function BulkActionBar({ selectedCount, deleting, onClear, onDelete }: BulkActionBarProps): ReactElement | null {
@@ -22,11 +22,12 @@ export function BulkActionBar({ selectedCount, deleting, onClear, onDelete }: Bu
         <button type="button" className={styles.btn} onClick={onClear} disabled={deleting}>
           清空
         </button>
-        <button type="button" className={`${styles.btn} ${styles.danger}`} onClick={onDelete} disabled={deleting}>
-          删除
-        </button>
+        {onDelete ? (
+          <button type="button" className={`${styles.btn} ${styles.danger}`} onClick={onDelete} disabled={deleting}>
+            删除
+          </button>
+        ) : null}
       </div>
     </div>
   )
 }
-

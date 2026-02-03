@@ -1,4 +1,7 @@
-import { type ReactElement, useState } from "react"
+"use client"
+
+import { type ReactElement, useMemo, useState } from "react"
+import { createPortal } from "react-dom"
 import styles from "./ImageParamsSidebar.module.css"
 import { ChipWithThumb } from "./ImageParamsSidebarParts/ChipWithThumb"
 import { ChipGroup } from "./ImageParamsSidebarParts/ChipGroup"
@@ -11,6 +14,7 @@ type PreviewImage = {
   thumbnailUrl?: string | null
   category?: string
   storyboardId?: string | null
+  isGlobal?: boolean
   description?: string | null
   prompt?: string | null
 }
@@ -46,6 +50,8 @@ type Props = {
     background: PreviewImage[]
     item: PreviewImage[]
   }
+  onOpenAddModal?: (kind: "role" | "item") => void
+  onDeleteAsset?: (params: { category: "role" | "item"; name: string; imageId?: string; isGlobal?: boolean }) => Promise<void> | void
 }
 
 function pickPreview(list: PreviewImage[], name: string): PreviewImage | null {
@@ -72,6 +78,8 @@ export function ImageParamsSidebar({
   onGenerate,
   onPreviewImage,
   previews,
+  onOpenAddModal,
+  onDeleteAsset,
   isGenerating
 }: Props): ReactElement {
   const rolePreviews = previews?.role ?? []
@@ -82,6 +90,39 @@ export function ImageParamsSidebar({
   const [shotCutError, setShotCutError] = useState<string | null>(null)
   const [usingLastFrame, setUsingLastFrame] = useState(false)
   const [firstFrameLocked, setFirstFrameLocked] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmTarget, setConfirmTarget] = useState<{ category: "role" | "item"; name: string; imageId?: string; isGlobal?: boolean } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const canPortal = typeof document !== "undefined"
+
+  const confirmTitle = useMemo(() => {
+    if (!confirmTarget) return "确认删除"
+    return `删除：${confirmTarget.name}`
+  }, [confirmTarget])
+
+  const requestDelete = (p: { category: "role" | "item"; name: string; imageId?: string; isGlobal?: boolean }) => {
+    if (!onDeleteAsset) return
+    if (deleting) return
+    setConfirmTarget(p)
+    setConfirmOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!onDeleteAsset) return
+    if (!confirmTarget) return
+    if (deleting) return
+    setDeleting(true)
+    try {
+      await onDeleteAsset(confirmTarget)
+      setConfirmOpen(false)
+      setConfirmTarget(null)
+    } catch (e) {
+      const anyErr = e as { message?: string }
+      alert(anyErr?.message ?? "删除失败")
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <aside className={styles.left} aria-label="生图参数区">
@@ -227,9 +268,19 @@ export function ImageParamsSidebar({
                 if (!p?.url) return
                 onPreviewImage?.(name, p.url, p.id, p.storyboardId ?? null, p.category ?? null, p.description, p.prompt)
               }}
+              onDelete={
+                onDeleteAsset
+                  ? () => requestDelete({ category: "role", name, imageId: p?.id, isGlobal: p?.isGlobal })
+                  : undefined
+              }
             />
           )
         })}
+        {onOpenAddModal ? (
+          <button type="button" className={`${styles.chip} ${styles.chipAdd}`} onClick={() => onOpenAddModal("role")} aria-label="添加角色">
+            + 添加
+          </button>
+        ) : null}
       </ChipGroup>
 
       <ChipGroup title="物品">
@@ -246,10 +297,79 @@ export function ImageParamsSidebar({
                 if (!p?.url) return
                 onPreviewImage?.(name, p.url, p.id, p.storyboardId ?? null, p.category ?? null, p.description, p.prompt)
               }}
+              onDelete={
+                onDeleteAsset
+                  ? () => requestDelete({ category: "item", name, imageId: p?.id, isGlobal: p?.isGlobal })
+                  : undefined
+              }
             />
           )
         })}
+        {onOpenAddModal ? (
+          <button type="button" className={`${styles.chip} ${styles.chipAdd}`} onClick={() => onOpenAddModal("item")} aria-label="添加物品">
+            + 添加
+          </button>
+        ) : null}
       </ChipGroup>
+
+      {canPortal && confirmOpen
+        ? createPortal(
+            <div
+              className={styles.confirmOverlay}
+              role="presentation"
+              onClick={() => {
+                if (deleting) return
+                setConfirmOpen(false)
+                setConfirmTarget(null)
+              }}
+            >
+              <div className={styles.confirmModal} role="dialog" aria-modal="true" aria-label={confirmTitle} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.confirmHeader}>
+                  <div className={styles.confirmTitle}>{confirmTitle}</div>
+                  <button
+                    type="button"
+                    className={styles.confirmCloseBtn}
+                    aria-label="关闭"
+                    onClick={() => {
+                      if (deleting) return
+                      setConfirmOpen(false)
+                      setConfirmTarget(null)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className={styles.confirmBody}>
+                  <div className={styles.confirmDesc}>
+                    {confirmTarget?.isGlobal ? "删除后可能影响其他镜头复用。" : "删除后将从该镜头脚本中移除对应实体。"}
+                  </div>
+                </div>
+                <div className={styles.confirmActions}>
+                  <button
+                    type="button"
+                    className={styles.confirmBtn}
+                    disabled={deleting}
+                    onClick={() => {
+                      setConfirmOpen(false)
+                      setConfirmTarget(null)
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.confirmBtn} ${styles.confirmBtnDanger}`}
+                    disabled={deleting || !confirmTarget}
+                    onClick={() => void confirmDelete()}
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
 
       <button
         type="button"

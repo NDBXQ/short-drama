@@ -6,6 +6,7 @@ import { makeApiErr, makeApiOk } from "@/shared/api"
 import { getSessionFromRequest } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
 import { publicResources } from "@/shared/schema"
+import { ensureSmoothLibraryMigration } from "@/shared/libraryMigration"
 
 const querySchema = z.object({
   type: z.string().trim().min(1).max(50).optional(),
@@ -19,6 +20,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   const session = await getSessionFromRequest(req)
   const userId = session?.userId
   if (!userId) return NextResponse.json(makeApiErr(traceId, "AUTH_REQUIRED", "未登录或登录已过期"), { status: 401 })
+
+  await ensureSmoothLibraryMigration(userId, traceId)
 
   const url = new URL(req.url)
   const parsed = querySchema.safeParse({
@@ -35,6 +38,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const type = (parsed.data.type ?? "").trim()
 
   const whereParts: any[] = []
+  whereParts.push(eq(publicResources.userId, userId))
   whereParts.push(sql`NOT (${publicResources.tags} @> ${JSON.stringify(["tts_sample"])}::jsonb)`)
   if (type) whereParts.push(eq(publicResources.type, type))
   if (keyword) {

@@ -55,14 +55,15 @@ export function useStoryboardData({ initialItems = [], storyId: initialStoryId, 
         const outlinesMap: Record<string, ApiOutline> = {}
         for (const o of json.data.outlines) outlinesMap[o.id] = o
 
-        const activeId = json.data.activeOutlineId ?? ""
-        const initialKey = json.data.storyId && activeId ? `${json.data.storyId}:${activeId}:0` : ""
+        const firstEpisodeId = json.data.outlines[0]?.id ?? ""
+        const activeId = firstEpisodeId
+        const initialKey = ""
 
         setOutlineById(outlinesMap)
         setEpisodes(json.data.episodes)
         setStoryId(json.data.storyId)
         setActiveEpisode(activeId)
-        setItems(normalizeShotsToItems(json.data.shots))
+        setItems([])
         setSelectedItems(new Set())
         setLastLoadedKey(initialKey)
         setIsInitialized(true)
@@ -114,6 +115,16 @@ export function useStoryboardData({ initialItems = [], storyId: initialStoryId, 
       ignore = true
     }
   }, [activeEpisode, isInitialized, lastLoadedKey, reloadTick, storyId])
+
+  useEffect(() => {
+    const onUpdated = (e: Event) => {
+      const anyEv = e as any
+      if (!anyEv?.detail?.refreshStoryboards) return
+      void reloadShots()
+    }
+    window.addEventListener("video_reference_images_updated", onUpdated as any)
+    return () => window.removeEventListener("video_reference_images_updated", onUpdated as any)
+  }, [reloadShots])
 
   const updateItemById = useCallback((id: string, updater: (item: StoryboardItem) => StoryboardItem) => {
     setItems((prev) => prev.map((it) => (it.id === id ? updater(it) : it)))

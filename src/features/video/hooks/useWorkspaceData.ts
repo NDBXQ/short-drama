@@ -20,10 +20,11 @@ export function useWorkspaceData({
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [previewVersion, setPreviewVersion] = useState(0)
+  const [storyboardsVersion, setStoryboardsVersion] = useState(0)
   const [activePreviews, setActivePreviews] = useState<{
-    role: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
-    background: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
-    item: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; description?: string | null; prompt?: string | null }>
+    role: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
+    background: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
+    item: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
   }>({
     role: [],
     background: [],
@@ -35,6 +36,8 @@ export function useWorkspaceData({
       const anyEv = e as any
       const storyboardId = typeof anyEv?.detail?.storyboardId === "string" ? anyEv.detail.storyboardId : ""
       if (storyboardId && storyboardId !== activeStoryboardId) return
+      const refreshStoryboards = Boolean(anyEv?.detail?.refreshStoryboards)
+      if (refreshStoryboards) setStoryboardsVersion((v) => v + 1)
       setPreviewVersion((v) => v + 1)
     }
     window.addEventListener("video_reference_images_updated", onUpdated as any)
@@ -76,7 +79,7 @@ export function useWorkspaceData({
     return () => {
       ignore = true
     }
-  }, [outlineId, storyboardId, storyId, setActiveStoryboardId])
+  }, [outlineId, storyboardId, storyId, setActiveStoryboardId, storyboardsVersion])
 
   // Load Previews
   useEffect(() => {
@@ -138,6 +141,7 @@ export function useWorkspaceData({
             thumbnailUrl: typeof row.thumbnailUrl === "string" ? row.thumbnailUrl : null,
             category,
             storyboardId: rawStoryboardId ?? activeStoryboardId,
+            isGlobal: !rawStoryboardId,
             description: typeof row.description === "string" ? row.description : null,
             prompt: typeof row.prompt === "string" ? row.prompt : null
           }

@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useState } from "react"
+import { type ReactElement, useEffect, useRef, useState } from "react"
 import type { StoryboardItem } from "../../types"
 import { ChipEditModal } from "../ChipEditModal"
 import { ImagePreviewModal } from "../ImagePreviewModal"
@@ -71,6 +71,7 @@ export function StoryboardList({
   } = useScriptGeneration({ items, updateItemById })
 
   // UI States
+  const [notice, setNotice] = useState<{ type: "info" | "error"; message: string } | null>(null)
   const [preview, setPreview] = useState<{
     title: string
     imageSrc: string
@@ -88,6 +89,7 @@ export function StoryboardList({
   const [editTextSaving, setEditTextSaving] = useState(false)
   const [editTextError, setEditTextError] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
+  const autoOpenedPanelRef = useRef(false)
   const [refImageGeneratingById, setRefImageGeneratingById] = useState<Record<string, boolean>>({})
   const { isAutoGenerating, generationStage, generationEpisodeId, textBatchMeta, scriptSummary, promptSummary, assetSummary, episodeProgressById } = useAutoGenerateStoryboards({
     autoGenerate,
@@ -123,8 +125,18 @@ export function StoryboardList({
   })
 
   useEffect(() => {
-    if (isAutoGenerating) setPanelOpen(false)
-  }, [isAutoGenerating])
+    if (autoOpenedPanelRef.current) return
+    if (!autoGenerate) return
+    if (!isAutoGenerating && generationStage === "idle") return
+    autoOpenedPanelRef.current = true
+    setPanelOpen(true)
+  }, [autoGenerate, generationStage, isAutoGenerating])
+
+  useEffect(() => {
+    if (!notice) return
+    const t = window.setTimeout(() => setNotice(null), 4000)
+    return () => window.clearTimeout(t)
+  }, [notice])
 
   // Handlers
   const openPreview = (
@@ -173,31 +185,48 @@ export function StoryboardList({
   }
 
   const handleGenerateReferenceImages = async (storyboardId: string) => {
-    if (!storyId) return
+    if (!storyId) {
+      setNotice({ type: "error", message: "缺少 storyId，无法生成参考图" })
+      return
+    }
     if (refImageGeneratingById[storyboardId]) return
     setRefImageGeneratingById((prev) => ({ ...prev, [storyboardId]: true }))
     try {
       const base = items.find((it) => it.id === storyboardId)
-      if (!base) return
+      if (!base) {
+        setNotice({ type: "error", message: "未找到对应分镜，无法生成参考图" })
+        return
+      }
 
       const script = base.scriptContent ? base.scriptContent : await generateScriptForItem(base)
-      if (!script) return
+      if (!script) {
+        setNotice({ type: "error", message: "脚本生成失败，无法生成参考图" })
+        return
+      }
 
       const prompts = extractReferenceImagePrompts(script)
-      if (prompts.length === 0) return
+      if (prompts.length === 0) {
+        setNotice({ type: "info", message: "未解析到参考图提示词；请先完善分镜描述或重新生成脚本" })
+        return
+      }
 
-      const jobId = await startReferenceImageJob({
-        storyId,
-        storyboardId,
-        prompts: prompts.map((p) => ({
-          name: p.name,
-          prompt: p.prompt,
-          description: p.description,
-          category: p.category === "reference" ? "item" : p.category
-        }))
-      })
-      await waitReferenceImageJob(jobId).catch(() => {})
-      window.dispatchEvent(new Event("video_reference_images_updated"))
+      try {
+        const jobId = await startReferenceImageJob({
+          storyId,
+          storyboardId,
+          prompts: prompts.map((p) => ({
+            name: p.name,
+            prompt: p.prompt,
+            description: p.description,
+            category: p.category === "reference" ? "item" : p.category
+          }))
+        })
+        await waitReferenceImageJob(jobId).catch(() => {})
+        window.dispatchEvent(new Event("video_reference_images_updated"))
+      } catch (e) {
+        const anyErr = e as { message?: string }
+        setNotice({ type: "error", message: anyErr?.message ?? "参考图任务启动失败" })
+      }
     } finally {
       setRefImageGeneratingById((prev) => ({ ...prev, [storyboardId]: false }))
     }
@@ -265,6 +294,7 @@ export function StoryboardList({
           title={preview.title}
           imageSrc={preview.imageSrc}
           generatedImageId={preview.generatedImageId}
+          storyId={storyId ?? null}
           storyboardId={preview.storyboardId ?? null}
           category={preview.category ?? null}
           description={preview.description ?? null}
@@ -315,6 +345,11 @@ export function StoryboardList({
           regenerateDisabled={regenStatus.status === "running" || Boolean(isLoading || isAutoGenerating) || !storyId || !activeEpisode}
           regenerateStatusText={regenStatus.status === "idle" ? null : regenStatus.message}
         />
+        {notice ? (
+          <div className={`${styles.notice} ${notice.type === "error" ? styles.noticeError : styles.noticeInfo}`} role="status">
+            {notice.message}
+          </div>
+        ) : null}
         {(isAutoGenerating || generationStage !== "idle") ? (
           <GenerationPanel
             open={panelOpen}
@@ -327,6 +362,7 @@ export function StoryboardList({
 
         <StoryboardTable
           items={items}
+          updateItemById={updateItemById}
           selectedItems={selectedItems}
           scriptGenerateById={scriptGenerateById}
           isLoading={isLoading || isAutoGenerating}

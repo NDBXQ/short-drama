@@ -9,6 +9,7 @@ import { generateThumbnail } from "@/lib/thumbnail"
 import { getSessionFromRequest } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 
 const formSchema = z.object({
   storyId: z.string().trim().min(1).max(200).optional(),
@@ -150,8 +151,8 @@ export async function POST(req: NextRequest): Promise<Response> {
   const uploadedOriginalKey = await storage.uploadFile({ fileContent: bytes, fileName: originalFileKey, contentType: file.type || "image/jpeg" })
   const uploadedThumbnailKey = await storage.uploadFile({ fileContent: thumbnail, fileName: thumbnailFileKey, contentType: "image/jpeg" })
 
-  const originalSignedUrl = await storage.generatePresignedUrl({ key: uploadedOriginalKey, expireTime: 604800 })
-  const thumbnailSignedUrl = await storage.generatePresignedUrl({ key: uploadedThumbnailKey, expireTime: 604800 })
+  const originalSignedUrl = await resolveStorageUrl(storage, uploadedOriginalKey)
+  const thumbnailSignedUrl = await resolveStorageUrl(storage, uploadedThumbnailKey)
 
   const existed = await db
     .select({ id: generatedImages.id })

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getMyStories } from "../actions/library"
-import { listPublicResources, getPublicResourceStats } from "../actions/public"
+import { listPublicResources, getPublicResourceStats, listSharedResources, getSharedResourceStats } from "../actions/public"
 import { MOCK_ITEMS, MOCK_COUNTS, PUBLIC_COUNTS } from "../lib/mockItems"
 import type { LibraryItem } from "../components/LibraryCard"
 import type { Scope } from "../components/ScopeTabs"
@@ -19,6 +19,7 @@ import {
 export function useLibraryData() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pageSize = 60
 
   // URL State
   const [scope, setScope] = useState<Scope>(() => normalizeScope(searchParams.get("scope")))
@@ -29,9 +30,19 @@ export function useLibraryData() {
   // Data State
   const [myItems, setMyItems] = useState<LibraryItem[]>([])
   const [myLoading, setMyLoading] = useState(false)
-  const [publicItems, setPublicItems] = useState<LibraryItem[]>([])
-  const [publicCounts, setPublicCounts] = useState<Record<string, number>>({})
-  const [publicLoading, setPublicLoading] = useState(false)
+  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([])
+  const [libraryCounts, setLibraryCounts] = useState<Record<string, number>>({})
+  const [libraryLoading, setLibraryLoading] = useState(false)
+  const [libraryTotal, setLibraryTotal] = useState(0)
+  const [libraryHasMore, setLibraryHasMore] = useState(false)
+  const [libraryLoadingMore, setLibraryLoadingMore] = useState(false)
+
+  const [sharedItems, setSharedItems] = useState<LibraryItem[]>([])
+  const [sharedCounts, setSharedCounts] = useState<Record<string, number>>({})
+  const [sharedLoading, setSharedLoading] = useState(false)
+  const [sharedTotal, setSharedTotal] = useState(0)
+  const [sharedHasMore, setSharedHasMore] = useState(false)
+  const [sharedLoadingMore, setSharedLoadingMore] = useState(false)
 
   const updateUrl = useCallback(
     (patch: Record<string, string | null>) => {
@@ -67,35 +78,45 @@ export function useLibraryData() {
     void loadMyStories(query)
   }, [loadMyStories, query, scope])
 
-  // Load Public Resources
+  // Load Resource Library
   useEffect(() => {
-    if (scope !== "public") return
+    if (scope !== "library") return
+    let cancelled = false
     const type = mapCategoryToPublicType(category)
-    setPublicLoading(true)
-    listPublicResources({
-      type,
-      search: query,
-      sort: "recent",
-      limit: 60,
-      offset: 0
-    })
+    setLibraryLoading(true)
+    setLibraryLoadingMore(false)
+    setLibraryTotal(0)
+    setLibraryHasMore(false)
+    listPublicResources({ type, search: query, sort: "recent", limit: pageSize, offset: 0 })
       .then((res) => {
-        setPublicItems(res.items.map(mapPublicResourceToItem))
+        if (cancelled) return
+        const nextItems = res.items.map((r) => mapPublicResourceToItem(r, "library"))
+        setLibraryItems(nextItems)
+        setLibraryTotal(res.total)
+        setLibraryHasMore(nextItems.length < res.total)
       })
       .catch(() => {
-        setPublicItems([])
+        if (cancelled) return
+        setLibraryItems([])
+        setLibraryTotal(0)
+        setLibraryHasMore(false)
       })
       .finally(() => {
-        setPublicLoading(false)
+        if (cancelled) return
+        setLibraryLoading(false)
       })
-  }, [category, query, scope])
 
-  // Load Public Stats
+    return () => {
+      cancelled = true
+    }
+  }, [category, pageSize, query, scope])
+
+  // Load Resource Library Stats
   useEffect(() => {
-    if (scope !== "public") return
+    if (scope !== "library") return
     getPublicResourceStats()
       .then((stats) => {
-        setPublicCounts({
+        setLibraryCounts({
           all: stats.all,
           roles: stats.character,
           backgrounds: stats.background,
@@ -105,22 +126,76 @@ export function useLibraryData() {
         })
       })
       .catch(() => {
-        setPublicCounts({})
+        setLibraryCounts({})
       })
   }, [scope])
 
-  const categories = scope === "public" ? PUBLIC_CATEGORIES : MY_CATEGORIES
+  // Load Shared Resources
+  useEffect(() => {
+    if (scope !== "shared") return
+    let cancelled = false
+    const type = mapCategoryToPublicType(category)
+    setSharedLoading(true)
+    setSharedLoadingMore(false)
+    setSharedTotal(0)
+    setSharedHasMore(false)
+    listSharedResources({ type, search: query, sort: "recent", limit: pageSize, offset: 0 })
+      .then((res) => {
+        if (cancelled) return
+        const nextItems = res.items.map((r) => mapPublicResourceToItem(r, "shared"))
+        setSharedItems(nextItems)
+        setSharedTotal(res.total)
+        setSharedHasMore(nextItems.length < res.total)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setSharedItems([])
+        setSharedTotal(0)
+        setSharedHasMore(false)
+      })
+      .finally(() => {
+        if (cancelled) return
+        setSharedLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [category, pageSize, query, scope])
+
+  // Load Shared Stats
+  useEffect(() => {
+    if (scope !== "shared") return
+    getSharedResourceStats()
+      .then((stats) => {
+        setSharedCounts({
+          all: stats.all,
+          roles: stats.character,
+          backgrounds: stats.background,
+          props: stats.props,
+          audios: stats.audio,
+          videos: stats.video,
+        })
+      })
+      .catch(() => {
+        setSharedCounts({})
+      })
+  }, [scope])
+
+  const categories = scope === "library" || scope === "shared" ? PUBLIC_CATEGORIES : MY_CATEGORIES
 
   const counts = useMemo(() => {
-    if (scope === "public") return { ...PUBLIC_COUNTS, ...publicCounts }
+    if (scope === "library") return { ...PUBLIC_COUNTS, ...libraryCounts }
+    if (scope === "shared") return { ...PUBLIC_COUNTS, ...sharedCounts }
 
     const nextCounts = { ...(MOCK_COUNTS as Record<string, number>) }
     return nextCounts
-  }, [publicCounts, scope])
+  }, [libraryCounts, scope, sharedCounts])
 
   const displayItems = useMemo(() => {
     if (scope === "my") return myItems
-    if (scope === "public") return publicItems
+    if (scope === "library") return libraryItems
+    if (scope === "shared") return sharedItems
 
     return MOCK_ITEMS.filter((item) => {
       if ((item.scope ?? "my") !== scope) return false
@@ -131,24 +206,94 @@ export function useLibraryData() {
       }
       return true
     })
-  }, [category, myItems, publicItems, query, scope])
+  }, [category, libraryItems, myItems, query, scope, sharedItems])
 
   const refreshPublicData = useCallback(async () => {
     const type = mapCategoryToPublicType(category)
-    const [list, stats] = await Promise.all([
-      listPublicResources({ type, search: query, sort: "recent", limit: 60, offset: 0 }),
-      getPublicResourceStats()
-    ])
-    setPublicItems(list.items.map(mapPublicResourceToItem))
-    setPublicCounts({
-      all: stats.all,
-      roles: stats.character,
-      backgrounds: stats.background,
-      props: stats.props,
-      audios: stats.audio,
-      videos: stats.video
-    })
-  }, [category, query])
+    if (scope === "library") {
+      const [list, stats] = await Promise.all([
+        listPublicResources({ type, search: query, sort: "recent", limit: pageSize, offset: 0 }),
+        getPublicResourceStats()
+      ])
+      setLibraryItems(list.items.map((r) => mapPublicResourceToItem(r, "library")))
+      setLibraryTotal(list.total)
+      setLibraryHasMore(list.items.length < list.total)
+      setLibraryCounts({
+        all: stats.all,
+        roles: stats.character,
+        backgrounds: stats.background,
+        props: stats.props,
+        audios: stats.audio,
+        videos: stats.video
+      })
+      return
+    }
+    if (scope === "shared") {
+      const [list, stats] = await Promise.all([
+        listSharedResources({ type, search: query, sort: "recent", limit: pageSize, offset: 0 }),
+        getSharedResourceStats()
+      ])
+      setSharedItems(list.items.map((r) => mapPublicResourceToItem(r, "shared")))
+      setSharedTotal(list.total)
+      setSharedHasMore(list.items.length < list.total)
+      setSharedCounts({
+        all: stats.all,
+        roles: stats.character,
+        backgrounds: stats.background,
+        props: stats.props,
+        audios: stats.audio,
+        videos: stats.video
+      })
+      return
+    }
+  }, [category, pageSize, query, scope])
+
+  const loadMorePublic = useCallback(async () => {
+    if (scope !== "library" && scope !== "shared") return
+    const type = mapCategoryToPublicType(category)
+    if (scope === "library") {
+      if (libraryLoading || libraryLoadingMore) return
+      if (!libraryHasMore) return
+      const nextOffset = libraryItems.length
+      setLibraryLoadingMore(true)
+      try {
+        const res = await listPublicResources({ type, search: query, sort: "recent", limit: pageSize, offset: nextOffset })
+        const nextItems = res.items.map((r) => mapPublicResourceToItem(r, "library"))
+        setLibraryItems((prev) => [...prev, ...nextItems])
+        setLibraryTotal(res.total)
+        setLibraryHasMore(nextOffset + nextItems.length < res.total)
+      } finally {
+        setLibraryLoadingMore(false)
+      }
+      return
+    }
+    if (sharedLoading || sharedLoadingMore) return
+    if (!sharedHasMore) return
+    const nextOffset = sharedItems.length
+    setSharedLoadingMore(true)
+    try {
+      const res = await listSharedResources({ type, search: query, sort: "recent", limit: pageSize, offset: nextOffset })
+      const nextItems = res.items.map((r) => mapPublicResourceToItem(r, "shared"))
+      setSharedItems((prev) => [...prev, ...nextItems])
+      setSharedTotal(res.total)
+      setSharedHasMore(nextOffset + nextItems.length < res.total)
+    } finally {
+      setSharedLoadingMore(false)
+    }
+  }, [
+    category,
+    libraryHasMore,
+    libraryItems.length,
+    libraryLoading,
+    libraryLoadingMore,
+    pageSize,
+    query,
+    scope,
+    sharedHasMore,
+    sharedItems.length,
+    sharedLoading,
+    sharedLoadingMore
+  ])
 
   return {
     scope,
@@ -161,11 +306,16 @@ export function useLibraryData() {
     setQuery,
     updateUrl,
     myItems,
-    publicItems,
+    publicItems: scope === "shared" ? sharedItems : libraryItems,
+    publicTotal: scope === "shared" ? sharedTotal : libraryTotal,
+    publicOffset: 0,
+    publicHasMore: scope === "shared" ? sharedHasMore : libraryHasMore,
+    publicLoadingMore: scope === "shared" ? sharedLoadingMore : libraryLoadingMore,
+    loadMorePublic,
     counts,
     categories,
     displayItems,
-    loading: myLoading || publicLoading,
+    loading: myLoading || libraryLoading || sharedLoading,
     refreshPublicData,
     loadMyStories,
   }

@@ -1,5 +1,8 @@
+"use client"
+
 import Image from "next/image"
-import type { ReactElement } from "react"
+import { useEffect, type ReactElement } from "react"
+import { createPortal } from "react-dom"
 import styles from "../ImageParamsSidebar.module.css"
 import modalStyles from "./LastFrameModal.module.css"
 
@@ -18,9 +21,20 @@ export function LastFrameModal({
   onClose: () => void
   onUse: () => Promise<void> | void
 }): ReactElement | null {
+  const canPortal = typeof document !== "undefined"
+
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [open, onClose])
+
   if (!open) return null
 
-  return (
+  const content = (
     <div className={modalStyles.overlay} role="dialog" aria-modal="true" aria-label="查看尾帧图" onClick={onClose}>
       <div className={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={modalStyles.modalHeader}>
@@ -50,4 +64,6 @@ export function LastFrameModal({
       </div>
     </div>
   )
+
+  return canPortal ? createPortal(content, document.body) : content
 }

@@ -6,6 +6,7 @@ import { createCozeS3Storage } from "@/server/integrations/storage/s3"
 import { logger } from "@/shared/logger"
 import { stories, storyOutlines, storyboards } from "@/shared/schema"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 import { getJobById, insertJob, tryClaimNextJob, updateJob, type JobStatus } from "./jobDb"
 import { createHash, randomUUID } from "crypto"
 
@@ -72,8 +73,8 @@ async function runVideoJob(payload: VideoGenerateJobPayload, snapshot: VideoGene
   if (!payload.forceRegenerate && payload.existingVideoStorageKey) {
     cur = { ...cur, stage: "reuse" }
     await persistSnapshot(payload.jobId, cur)
-    const signed = await storage.generatePresignedUrl({ key: payload.existingVideoStorageKey, expireTime: 604800 })
-    const done: VideoGenerateJobSnapshot = { ...cur, status: "done", stage: "done", finishedAt: Date.now(), video: { url: signed, mode: payload.mode } }
+    const url = await resolveStorageUrl(storage, payload.existingVideoStorageKey)
+    const done: VideoGenerateJobSnapshot = { ...cur, status: "done", stage: "done", finishedAt: Date.now(), video: { url, mode: payload.mode } }
     await persistSnapshot(payload.jobId, done, { finished: true })
     return
   }
@@ -157,7 +158,7 @@ async function runVideoJob(payload: VideoGenerateJobPayload, snapshot: VideoGene
   const fileKey = `generated_${payload.storyId ?? "story"}_${payload.storyboardId ?? "unknown"}_${safeName}_${timestamp}.mp4`
 
   const uploadedKey = await storage.uploadFile({ fileContent: buf, fileName: fileKey, contentType: "video/mp4" })
-  const signedUrl = await storage.generatePresignedUrl({ key: uploadedKey, expireTime: 604800 })
+  const signedUrl = await resolveStorageUrl(storage, uploadedKey)
 
   cur = { ...cur, stage: "write_db" }
   await persistSnapshot(payload.jobId, cur)

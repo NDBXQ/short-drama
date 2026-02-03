@@ -5,6 +5,7 @@ import { generateThumbnail } from "@/lib/thumbnail"
 import { createCozeS3Storage } from "@/server/integrations/storage/s3"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
 import { generatedImages, stories } from "@/shared/schema"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 import sharp from "sharp"
 
 async function fetchImageBytes(url: string, traceId: string, event: string): Promise<Buffer> {
@@ -64,7 +65,7 @@ export async function bakeSelectionBoxToS3(params: {
   const safe = makeSafeObjectKeySegment(`inpaint_${storyboardId ?? "story"}_${traceId}`, 64)
   const key = `inpaint_${storyboardId ?? "story"}_${safe}_${ts}.jpg`
   const uploadedKey = await storage.uploadFile({ fileContent: baked, fileName: key, contentType: "image/jpeg" })
-  const signedUrl = await storage.generatePresignedUrl({ key: uploadedKey, expireTime: 604800 })
+  const signedUrl = await resolveStorageUrl(storage, uploadedKey)
 
   const durationMs = Date.now() - start
   logger.info({
@@ -127,8 +128,8 @@ export async function overwriteGeneratedImage(params: {
   const uploadedOriginalKey = await storage.uploadFile({ fileContent: jpegBytes, fileName: originalFileKey, contentType: "image/jpeg" })
   const uploadedThumbnailKey = await storage.uploadFile({ fileContent: thumbnailBytes, fileName: thumbnailFileKey, contentType: "image/jpeg" })
 
-  const originalSignedUrl = await storage.generatePresignedUrl({ key: uploadedOriginalKey, expireTime: 604800 })
-  const thumbnailSignedUrl = await storage.generatePresignedUrl({ key: uploadedThumbnailKey, expireTime: 604800 })
+  const originalSignedUrl = await resolveStorageUrl(storage, uploadedOriginalKey)
+  const thumbnailSignedUrl = await resolveStorageUrl(storage, uploadedThumbnailKey)
 
   await db
     .update(generatedImages)
@@ -152,4 +153,3 @@ export async function overwriteGeneratedImage(params: {
 
   return { url: originalSignedUrl }
 }
-

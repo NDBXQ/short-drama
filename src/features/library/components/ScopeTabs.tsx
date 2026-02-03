@@ -1,7 +1,7 @@
 import type { ReactElement } from "react"
 import styles from "./ScopeTabs.module.css"
 
-export type Scope = "my" | "public"
+export type Scope = "my" | "library" | "shared"
 
 interface ScopeTabsProps {
   value: Scope
@@ -20,10 +20,17 @@ export function ScopeTabs({ value, onChange }: ScopeTabsProps): ReactElement {
       </button>
       <button
         type="button"
-        className={`${styles.tab} ${value === "public" ? styles.active : ""}`}
-        onClick={() => onChange("public")}
+        className={`${styles.tab} ${value === "library" ? styles.active : ""}`}
+        onClick={() => onChange("library")}
       >
-        公共资源
+        资源库
+      </button>
+      <button
+        type="button"
+        className={`${styles.tab} ${value === "shared" ? styles.active : ""}`}
+        onClick={() => onChange("shared")}
+      >
+        共享资源库
       </button>
     </div>
   )

@@ -15,7 +15,7 @@
 }
 
 .mainImage {
-  --dock-h: 120px;
+  --dock-h: 140px;
 }
 
 .topRow {
@@ -30,7 +30,7 @@
 
 .topRowVideo {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   min-height: 0;
   height: 100%;
 }
@@ -47,14 +47,23 @@
   overflow: hidden;
   padding: 8px 12px;
   border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 16px 44px -26px rgba(15, 23, 42, 0.25);
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: var(--theme-blur);
 }
 
 @media (max-width: 1023px) {
   .topRowVideo {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .splitter {
+    display: none;
+  }
+
+  .assetSidebarWrap {
+    width: 100%;
   }
 }
 
@@ -83,15 +92,15 @@
   width: 2px;
   height: 72%;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .splitter:hover::before {
-  background: rgba(79, 70, 229, 0.35);
+  background: rgba(109, 94, 247, 0.45);
 }
 
 .splitterActive::before {
-  background: rgba(79, 70, 229, 0.55);
+  background: rgba(109, 94, 247, 0.65);
 }
 
 .dock {

@@ -1,12 +1,12 @@
 .wrapper {
-  --border-color: #e5e7eb;
-  --bg-subtle: #f9fafb;
-  --text-main: #111827;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
-  --blue-primary: #4f46e5;
-  --blue-light: rgba(109, 94, 247, 0.12);
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --border-color: rgba(255, 255, 255, 0.10);
+  --bg-subtle: rgba(255, 255, 255, 0.04);
+  --text-main: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.62);
+  --text-tertiary: rgba(255, 255, 255, 0.45);
+  --blue-primary: rgba(109, 94, 247, 0.92);
+  --blue-light: rgba(109, 94, 247, 0.18);
+  --shadow-sm: 0 18px 52px rgba(2, 6, 23, 0.45);
 
   display: flex;
   gap: 12px;
@@ -26,23 +26,44 @@
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  background-color: rgba(255, 255, 255, 0.92);
+  background-color: var(--theme-surface);
   min-width: 0;
   border-radius: 14px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--theme-border);
+  backdrop-filter: var(--theme-blur);
   overflow: hidden;
+}
+
+.notice {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 18px;
+  border: 1px solid transparent;
+}
+
+.noticeInfo {
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.24);
+}
+
+.noticeError {
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.26);
 }
 
 
 .wrapper input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: #2563eb;
+  accent-color: rgba(109, 94, 247, 0.92);
 }
 
 .wrapper button:focus-visible,
 .wrapper [role="button"]:focus-visible,
 .wrapper input:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.5);
+  outline: 2px solid rgba(109, 94, 247, 0.55);
   outline-offset: 2px;
 }

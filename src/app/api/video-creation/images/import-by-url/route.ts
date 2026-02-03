@@ -9,6 +9,7 @@ import { downloadImage, generateThumbnail } from "@/lib/thumbnail"
 import { getSessionFromRequest } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 
 export const runtime = "nodejs"
 
@@ -61,8 +62,8 @@ export async function POST(req: NextRequest): Promise<Response> {
   const uploadedOriginalKey = await storage.uploadFile({ fileContent: imageBuffer, fileName: originalFileKey, contentType: "image/jpeg" })
   const uploadedThumbnailKey = await storage.uploadFile({ fileContent: thumbnailBuffer, fileName: thumbnailFileKey, contentType: "image/jpeg" })
 
-  const originalSignedUrl = await storage.generatePresignedUrl({ key: uploadedOriginalKey, expireTime: 604800 })
-  const thumbnailSignedUrl = await storage.generatePresignedUrl({ key: uploadedThumbnailKey, expireTime: 604800 })
+  const originalSignedUrl = await resolveStorageUrl(storage, uploadedOriginalKey)
+  const thumbnailSignedUrl = await resolveStorageUrl(storage, uploadedThumbnailKey)
 
   const existed = isFrameLikeName(name)
     ? await db

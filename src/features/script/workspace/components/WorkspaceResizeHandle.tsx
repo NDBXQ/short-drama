@@ -22,31 +22,36 @@ function clampWidth(value: number): number {
 
 export function WorkspaceResizeHandle({ containerRef }: WorkspaceResizeHandleProps): ReactElement {
   const [active, setActive] = useState(false)
+  const [widthPx, setWidthPx] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const stored = Number(raw)
+        if (Number.isFinite(stored)) return clampWidth(stored)
+      }
+    } catch {}
+    return DEFAULT_WIDTH
+  })
   const lastClientXRef = useRef(0)
   const rafRef = useRef<number | null>(null)
   const prevUserSelectRef = useRef<string | null>(null)
 
   const applyWidth = useCallback(
     (widthPx: number) => {
-      const el = containerRef.current
-      if (!el) return
       const clamped = clampWidth(widthPx)
-      el.style.setProperty("--workspace-sidebar-width", `${clamped}px`)
+      setWidthPx(clamped)
       try {
         localStorage.setItem(STORAGE_KEY, String(clamped))
       } catch {}
     },
-    [containerRef]
+    []
   )
 
   useEffect(() => {
-    let stored: number | null = null
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) stored = Number(raw)
-    } catch {}
-    if (stored != null && Number.isFinite(stored)) applyWidth(stored)
-  }, [applyWidth])
+    const el = containerRef.current
+    if (!el) return
+    el.style.setProperty("--workspace-sidebar-width", `${widthPx}px`)
+  }, [containerRef, widthPx])
 
   const scheduleFromClientX = useCallback(() => {
     if (rafRef.current != null) return
@@ -99,6 +104,10 @@ export function WorkspaceResizeHandle({ containerRef }: WorkspaceResizeHandlePro
       className={active ? `${styles.resizeHandle} ${styles.resizeHandleActive}` : styles.resizeHandle}
       role="separator"
       aria-orientation="vertical"
+      aria-label="调整对话栏宽度"
+      aria-valuemin={MIN_WIDTH}
+      aria-valuemax={MAX_WIDTH}
+      aria-valuenow={widthPx}
       tabIndex={0}
       onPointerDown={(e) => {
         if (e.button !== 0) return
@@ -108,7 +117,29 @@ export function WorkspaceResizeHandle({ containerRef }: WorkspaceResizeHandlePro
         scheduleFromClientX()
       }}
       onDoubleClick={() => applyWidth(DEFAULT_WIDTH)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          e.preventDefault()
+          const delta = e.shiftKey ? 60 : 20
+          const next = e.key === "ArrowLeft" ? widthPx + delta : widthPx - delta
+          applyWidth(next)
+          return
+        }
+        if (e.key === "Home") {
+          e.preventDefault()
+          applyWidth(MIN_WIDTH)
+          return
+        }
+        if (e.key === "End") {
+          e.preventDefault()
+          applyWidth(MAX_WIDTH)
+          return
+        }
+        if (e.key === "Enter") {
+          e.preventDefault()
+          applyWidth(DEFAULT_WIDTH)
+        }
+      }}
     />
   )
 }
-

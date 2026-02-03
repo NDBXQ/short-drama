@@ -8,6 +8,7 @@ export type PreviewImage = {
   thumbnailUrl?: string | null
   category: string
   storyboardId?: string | null
+  isGlobal?: boolean
   description?: string | null
   prompt?: string | null
 }
@@ -124,6 +125,7 @@ export function useStoryboardPreviews(params: { storyId?: string; items: Storybo
           thumbnailUrl: thumbRaw || null,
           category,
           storyboardId,
+          isGlobal: !storyboardId,
           description: typeof row.description === "string" ? row.description : null,
           prompt: typeof row.prompt === "string" ? row.prompt : null
         }

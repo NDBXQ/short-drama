@@ -36,6 +36,17 @@ export function WorkbenchHero(): ReactElement {
             →
           </span>
         </Link>
+
+        <Link href="/tvc" className={`${styles.actionCard} ${styles.tvc}`}>
+          <div className={`${styles.actionIcon} ${styles.tvcIcon}`} aria-hidden="true" />
+          <div className={styles.actionText}>
+            <div className={styles.actionTitle}>TVC 一键成片</div>
+            <div className={styles.actionSub}>输入产品与风格，生成广告脚本与成片</div>
+          </div>
+          <span className={styles.chevron} aria-hidden="true">
+            →
+          </span>
+        </Link>
       </div>
     </section>
   )

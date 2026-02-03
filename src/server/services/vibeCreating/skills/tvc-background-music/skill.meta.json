@@ -1,0 +1,19 @@
+{
+  "name": "tvc-background-music",
+  "version": "1.0.0",
+  "description": "推荐适合TVC的背景音乐，并将视频与音乐合成为最终作品",
+  "tags": ["tvc", "music", "audio", "composition"],
+  "context_budget_tokens": 3000,
+  "allowed_tools": ["music.recommend", "video.compile"],
+  "model": "",
+  "owner": "Vibe Creating",
+  "last_updated": "2024-01-20",
+  "dependencies": ["tvc-video-generation"],
+  "triggers": [
+    "继续",
+    "下一步",
+    "背景音乐",
+    "音乐",
+    "合成"
+  ]
+}

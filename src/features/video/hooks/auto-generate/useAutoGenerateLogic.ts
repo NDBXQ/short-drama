@@ -38,9 +38,10 @@ export function useAutoGenerateLogic(
 
   const handleAutoGenerate = useCallback(async (mode: "all" | "script") => {
     if (!outlineById || Object.keys(outlineById).length === 0 || !storyId) return
+    const preferredActiveEpisodeId = mode === "script" && outlineId ? outlineId : activeEpisodeRef.current
     setIsAutoGenerating(true)
     setGenerationStage("clearing")
-    setGenerationEpisodeId(activeEpisodeRef.current)
+    setGenerationEpisodeId(preferredActiveEpisodeId)
     setTextBatchMeta(null)
     setScriptSummary(null)
     setPromptSummary(null)
@@ -77,7 +78,7 @@ export function useAutoGenerateLogic(
       } = await runStoryboardTextFlow({
         filteredPayloads: payloads,
         storyId,
-        activeEpisodeId: activeEpisodeRef.current,
+        activeEpisodeId: preferredActiveEpisodeId,
         setTextBatchMeta,
         setEpisodeProgressById,
         setGenerationStage,
@@ -122,7 +123,7 @@ export function useAutoGenerateLogic(
       })
 
       setGenerationStage("done")
-      await reloadShots(activeEpisodeRef.current)
+      await reloadShots(preferredEpisodeId)
 
       const url = new URL(window.location.href)
       url.searchParams.delete("autoGenerate")

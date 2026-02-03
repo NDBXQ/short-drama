@@ -10,6 +10,7 @@ import { logger } from "@/shared/logger"
 import { generatedImages, stories, storyOutlines, storyboards } from "@/shared/schema"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
 import { mergeStoryboardFrames } from "@/server/services/storyboardAssets"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 
 import { ServiceError } from "@/server/services/errors"
 
@@ -195,8 +196,8 @@ export class ImageCompositionService {
       const thumbnailKey = `composed_${effectiveStoryId}_${storyboardId}_${safeName}_${timestamp}_${keySuffix}_thumbnail.jpg`
       const uploadedOriginalKey = await storage.uploadFile({ fileContent: imageBuffer, fileName: originalKey, contentType: "image/jpeg" })
       const uploadedThumbnailKey = await storage.uploadFile({ fileContent: thumbnailBuffer, fileName: thumbnailKey, contentType: "image/jpeg" })
-      const originalSignedUrl = await storage.generatePresignedUrl({ key: uploadedOriginalKey, expireTime: 604800 })
-      const thumbnailSignedUrl = await storage.generatePresignedUrl({ key: uploadedThumbnailKey, expireTime: 604800 })
+      const originalSignedUrl = await resolveStorageUrl(storage, uploadedOriginalKey)
+      const thumbnailSignedUrl = await resolveStorageUrl(storage, uploadedThumbnailKey)
       return { name, url: originalSignedUrl, thumbnailUrl: thumbnailSignedUrl }
     }
 

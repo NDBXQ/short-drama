@@ -42,7 +42,7 @@ export function StoryboardToolbar({
             title="重新生成分镜文本/分镜脚本/提示词/参考图"
           >
             <RotateCcw size={14} />
-            重新生成
+            该集重新生成
           </button>
         ) : null}
         {selectedCount > 0 && (

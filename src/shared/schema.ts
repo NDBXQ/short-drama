@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm"
-import { boolean, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { boolean, integer, jsonb, pgSchema, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { createInsertSchema, createUpdateSchema } from "drizzle-zod"
 import { z } from "zod"
 
@@ -232,6 +232,7 @@ export const jobs = pgTable("jobs", {
 
 export const publicResources = pgTable("public_resources", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id"),
   type: text("type").notNull(), // 'character' | 'background' | 'props' | 'audio' | 'music' | 'effect' | 'transition' | 'video'
   source: text("source").notNull(), // 'seed' | 'upload' | 'ai'
   name: text("name").notNull(),
@@ -245,6 +246,157 @@ export const publicResources = pgTable("public_resources", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 })
 
+export const sharedResources = pgTable("shared_resources", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // 'character' | 'background' | 'props' | 'audio' | 'music' | 'effect' | 'transition' | 'video'
+  source: text("source").notNull(), // 'seed'
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  previewUrl: text("preview_url").notNull(),
+  previewStorageKey: text("preview_storage_key"),
+  originalUrl: text("original_url"),
+  originalStorageKey: text("original_storage_key"),
+  tags: jsonb("tags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  applicableScenes: jsonb("applicable_scenes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+})
+
+export const telemetryEvents = pgTable("telemetry_events", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  traceId: text("trace_id").notNull(),
+  userId: text("user_id"),
+  page: text("page").notNull(),
+  event: text("event").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  userAgent: text("user_agent"),
+  referrer: text("referrer"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+})
+
+export const iterationTasks = pgTable("iteration_tasks", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  module: text("module").notNull(),
+  title: text("title").notNull(),
+  status: text("status").notNull().default("proposed"),
+  spec: jsonb("spec").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+})
+
+const tvc = pgSchema("tvc")
+
+export const tvcStories = tvc.table("stories", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  title: text("title"),
+  storyType: text("story_type"),
+  resolution: text("resolution").notNull(),
+  aspectRatio: text("aspect_ratio").notNull().default("16:9"),
+  shotStyle: text("style").notNull().default("cinema"),
+  storyText: text("story_text").notNull(),
+  generatedText: text("generated_text"),
+  finalVideoUrl: text("final_video_url"),
+  status: text("status").notNull().default("draft"),
+  progressStage: text("progress_stage").notNull().default("outline"),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+})
+
+export const tvcStoryOutlines = tvc.table("story_outlines", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  storyId: text("story_id")
+    .notNull()
+    .references(() => tvcStories.id, { onDelete: "cascade" }),
+  sequence: integer("sequence").notNull(),
+  outlineText: text("outline_text").notNull(),
+  originalText: text("original_text").notNull(),
+  outlineDrafts: jsonb("outline_drafts")
+    .$type<Array<{ id: string; title?: string | null; content: string; requirements?: string | null; createdAt: string }>>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  activeOutlineDraftId: text("active_outline_draft_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+})
+
+export const tvcStoryboards = tvc.table("storyboards", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  outlineId: text("outline_id").notNull(),
+  sequence: integer("sequence").notNull(),
+  sceneTitle: text("scene_title").notNull(),
+  originalText: text("original_text").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+  isReferenceGenerated: boolean("is_reference_generated").notNull().default(false),
+  shotCut: boolean("shot_cut").notNull().default(false),
+  storyboardText: text("storyboard_text").notNull().default(""),
+  isVideoGenerated: boolean("is_video_generated").notNull().default(false),
+  isScriptGenerated: boolean("is_script_generated").notNull().default(false),
+  scriptContent: jsonb("script_content").$type<StoryboardScriptContent | null>(),
+  frames: jsonb("frames")
+    .$type<{
+      first?: { url?: string | null; thumbnailUrl?: string | null; prompt?: string | null }
+      last?: { url?: string | null; thumbnailUrl?: string | null; prompt?: string | null }
+    }>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  videoInfo: jsonb("video_info")
+    .$type<{
+      url?: string | null
+      prompt?: string | null
+      storageKey?: string | null
+      durationSeconds?: number | null
+      settings?: {
+        mode?: string | null
+        generateAudio?: boolean | null
+        watermark?: boolean | null
+      }
+    }>()
+    .notNull()
+    .default(sql`'{}'::jsonb`)
+})
+
+export const tvcAgentSteps = tvc.table("agent_steps", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  storyId: text("story_id")
+    .notNull()
+    .references(() => tvcStories.id, { onDelete: "cascade" }),
+  stepId: text("step_id").notNull(),
+  title: text("title"),
+  rawXml: text("raw_xml").notNull(),
+  content: jsonb("content").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+})
+
+export const tvcChatMessages = tvc.table("chat_messages", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  storyId: text("story_id")
+    .notNull()
+    .references(() => tvcStories.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+})
+
+export const tvcJobs = tvc.table("jobs", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  type: text("type").notNull(),
+  status: text("status").notNull(),
+  storyId: text("story_id")
+    .references(() => tvcStories.id, { onDelete: "cascade" }),
+  storyboardId: text("storyboard_id")
+    .references(() => tvcStoryboards.id, { onDelete: "set null" }),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+  progressVersion: integer("progress_version").notNull().default(0),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+})
+
 export type Story = typeof stories.$inferSelect
 export type StoryOutline = typeof storyOutlines.$inferSelect
 export type Storyboard = typeof storyboards.$inferSelect
@@ -253,6 +405,15 @@ export type GeneratedAudio = typeof generatedAudios.$inferSelect
 export type TtsSpeakerSample = typeof ttsSpeakerSamples.$inferSelect
 export type Job = typeof jobs.$inferSelect
 export type PublicResource = typeof publicResources.$inferSelect
+export type SharedResource = typeof sharedResources.$inferSelect
+export type TelemetryEvent = typeof telemetryEvents.$inferSelect
+export type IterationTask = typeof iterationTasks.$inferSelect
+export type TvcStory = typeof tvcStories.$inferSelect
+export type TvcStoryOutline = typeof tvcStoryOutlines.$inferSelect
+export type TvcStoryboard = typeof tvcStoryboards.$inferSelect
+export type TvcAgentStepRow = typeof tvcAgentSteps.$inferSelect
+export type TvcChatMessageRow = typeof tvcChatMessages.$inferSelect
+export type TvcJob = typeof tvcJobs.$inferSelect
 
 export const insertGeneratedImageSchema = createInsertSchema(generatedImages, {
   name: z.string().min(1),
@@ -270,5 +431,14 @@ export const insertPublicResourceSchema = createInsertSchema(publicResources, {
   applicableScenes: z.array(z.string()).optional()
 })
 
+export const insertSharedResourceSchema = createInsertSchema(sharedResources, {
+  name: z.string().min(1),
+  type: z.enum(["character", "background", "props", "audio", "music", "effect", "transition", "video"]),
+  source: z.enum(["seed"]),
+  tags: z.array(z.string()).optional(),
+  applicableScenes: z.array(z.string()).optional()
+})
+
 export type InsertGeneratedImage = z.infer<typeof insertGeneratedImageSchema>
 export type InsertPublicResource = z.infer<typeof insertPublicResourceSchema>
+export type InsertSharedResource = z.infer<typeof insertSharedResourceSchema>

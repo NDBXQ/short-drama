@@ -1,5 +1,5 @@
 import type { ReactElement } from "react"
-import { Pencil, Film, FileText, Image as ImageIcon, Eye, Music } from "lucide-react"
+import { Pencil, Film, FileText, Image as ImageIcon, Eye, Music, LayoutGrid } from "lucide-react"
 import Image from "next/image"
 import styles from "./LibraryCard.module.css"
 import type { StoryMetadata } from "@/features/video/types/story"
@@ -7,13 +7,13 @@ import type { StoryMetadata } from "@/features/video/types/story"
 export interface LibraryItem {
   id: string
   title: string
-  type: "draft" | "video" | "storyboard" | "material"
+  type: "draft" | "video" | "storyboard" | "material" | "tvc"
   updatedAt?: string
   subtitle?: string
   thumbnail?: string
   originalUrl?: string
   specs?: string // e.g. "4:3 480p"
-  scope?: "my" | "public"
+  scope?: "my" | "public" | "library" | "shared"
   publicCategory?: string
   metadata?: StoryMetadata
   progressStage?: string
@@ -29,13 +29,13 @@ interface LibraryCardProps {
 }
 
 export function LibraryCard({ item, view, onClick, selected, onToggleSelected, onViewContent }: LibraryCardProps): ReactElement {
-  const variant = item.scope ?? "my"
+  const variant = item.scope === "public" ? "library" : item.scope ?? "my"
   const isList = view === "list"
 
   const previewUrl = item.thumbnail
   const previewKind = (() => {
     if (!previewUrl) return "none"
-    if (variant === "public") {
+    if (variant === "library" || variant === "shared") {
       if (item.publicCategory === "videos") return "video"
       if (item.publicCategory === "audios") return "audio"
       return "image"
@@ -52,17 +52,23 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
     return "unknown"
   })()
 
-  const isStablePublicResourceUrl = Boolean(previewUrl?.startsWith("/api/library/public-resources/file/"))
+  const isStablePublicResourceUrl = Boolean(
+    previewUrl?.startsWith("/api/library/public-resources/file/") || previewUrl?.startsWith("/api/library/shared-resources/file/")
+  )
   
   const TypeIcon = {
     draft: Pencil,
     video: Film,
     storyboard: FileText,
     material: ImageIcon,
+    tvc: LayoutGrid,
   }[item.type]
 
 
   const stageLabel =
+    item.type === "tvc"
+      ? null
+      :
     item.progressStage === "outline"
       ? "大纲"
       : item.progressStage === "storyboard_text"
@@ -78,13 +84,6 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
                 : item.progressStage
                   ? "未知"
                   : null
-
-  // 计算进度显示
-  const progress = item.metadata?.progress
-  const showProgress = progress && (progress.shotTotal ?? 0) > 0
-  const progressPercent = showProgress 
-    ? Math.round(((progress?.shotScriptDone ?? 0) / (progress?.shotTotal ?? 1)) * 100)
-    : 0
 
   return (
     <div 
@@ -115,7 +114,7 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
           </div>
         )}
 
-        {variant === "my" && onViewContent ? (
+        {variant === "my" && onViewContent && item.type !== "tvc" ? (
           <button
             type="button"
             className={`${styles.viewContentBtn} ${item.specs ? styles.viewContentBtnShift : ""}`}
@@ -134,7 +133,7 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
             <div className={styles.typeTag} title={`progressStage: ${item.progressStage ?? ""}`}>
               <TypeIcon size={12} strokeWidth={2} />
               <span className={styles.typeTagText}>
-                {stageLabel ? `阶段：${stageLabel}` : ""}
+                {item.type === "tvc" ? "类型：TVC" : stageLabel ? `阶段：${stageLabel}` : ""}
               </span>
             </div>
             {item.specs ? <div className={styles.specTag}>{item.specs}</div> : null}
@@ -150,7 +149,7 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
           </>
         ) : null}
 
-        {variant === "public" ? (
+        {variant === "library" ? (
           <input
             type="checkbox"
             className={`${styles.checkbox} ${styles.alwaysShowCheckbox}`}
@@ -165,16 +164,7 @@ export function LibraryCard({ item, view, onClick, selected, onToggleSelected, o
         <h3 className={styles.title}>{item.title}</h3>
         {variant === "my" ? (
           <div className={styles.meta}>
-            {showProgress ? (
-              <div className={styles.progressBarWrapper} title={`脚本进度: ${progress?.shotScriptDone}/${progress?.shotTotal}`}>
-                <div className={styles.progressBar}>
-                  <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
-                </div>
-                <span className={styles.progressText}>{progressPercent}%</span>
-              </div>
-            ) : (
-              <span>{item.updatedAt ?? ""}</span>
-            )}
+            <span>{item.updatedAt ?? ""}</span>
             <span className={styles.action}>继续编辑 &rarr;</span>
           </div>
         ) : (

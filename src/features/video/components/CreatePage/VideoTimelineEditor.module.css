@@ -9,8 +9,9 @@
 .timelineWrap {
   width: 100%;
   min-width: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  backdrop-filter: var(--theme-blur);
   border-radius: 14px;
   padding: 10px 10px 12px;
   position: relative;
@@ -21,15 +22,15 @@
 }
 
 .timelineWrapDragOver {
-  border-color: rgba(79, 70, 229, 0.45);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  border-color: rgba(109, 94, 247, 0.55);
+  box-shadow: 0 0 0 3px rgba(109, 94, 247, 0.16);
 }
 
 .timelineScroll {
   overflow: auto;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -44,8 +45,8 @@
   position: sticky;
   top: 0;
   height: 26px;
-  background: rgba(248, 250, 252, 0.95);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 3;
   box-sizing: border-box;
   padding-left: 72px;
@@ -63,7 +64,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .tickLabel {
@@ -72,7 +73,7 @@
   left: 4px;
   font-size: 10px;
   font-weight: 800;
-  color: rgba(15, 23, 42, 0.55);
+  color: rgba(255, 255, 255, 0.55);
   white-space: nowrap;
 }
 
@@ -82,8 +83,8 @@
   top: 8px;
   height: 32px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(79, 70, 229, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(109, 94, 247, 0.18);
   cursor: grab;
   display: flex;
   align-items: center;
@@ -93,17 +94,17 @@
 }
 
 .clipActive {
-  background: rgba(79, 70, 229, 0.22);
-  border-color: rgba(79, 70, 229, 0.45);
+  background: rgba(109, 94, 247, 0.26);
+  border-color: rgba(109, 94, 247, 0.55);
 }
 
 .clipSelected {
-  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.25), 0 6px 14px rgba(15, 23, 42, 0.10);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.16), 0 18px 52px rgba(2, 6, 23, 0.45);
 }
 
 .audioClip {
-  background: rgba(16, 185, 129, 0.14);
-  border-color: rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.32);
 }
 
 .clipTitle {
@@ -111,7 +112,7 @@
   z-index: 2;
   font-size: 12px;
   font-weight: 900;
-  color: rgba(15, 23, 42, 0.82);
+  color: rgba(255, 255, 255, 0.86);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -12,7 +12,7 @@ interface LibraryToolbarProps {
   view: ViewMode
   onViewChange: (view: ViewMode) => void
   onSearch: (query: string) => void
-  variant?: "my" | "public"
+  variant?: "my" | "library" | "shared"
   onUpload?: () => void
   onGenerate?: () => void
   deleteLabel?: string
@@ -52,7 +52,7 @@ export function LibraryToolbar({
         />
       </div>
       
-      {variant === "public" ? (
+      {variant === "library" ? (
         <div className={styles.actionButtons}>
           <button type="button" className={styles.actionBtn} onClick={onUpload}>
             <Upload size={16} strokeWidth={2} />

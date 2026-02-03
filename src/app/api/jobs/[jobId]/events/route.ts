@@ -3,6 +3,7 @@ import { getSessionFromRequest } from "@/shared/session"
 import { makeApiErr, makeApiOk } from "@/shared/api"
 import { getTraceId } from "@/shared/trace"
 import { getJobById } from "@/server/jobs/jobDb"
+import { getTvcJobById } from "@/server/jobs/tvcJobDb"
 import { kickAllWorkers } from "@/server/jobs/kickWorkers"
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }): Promise<Response> {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
 
   const { jobId } = await params
   kickAllWorkers()
-  const initial = await getJobById(jobId)
+  const initial = (await getJobById(jobId)) ?? (await getTvcJobById(jobId))
   if (!initial) return NextResponse.json(makeApiErr(traceId, "NOT_FOUND", "任务不存在或已过期"), { status: 404 })
   if (initial.userId !== userId) return NextResponse.json(makeApiErr(traceId, "FORBIDDEN", "无权限访问该任务"), { status: 403 })
 
@@ -22,13 +23,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const send = (data: unknown) => {
+      const send = (data: unknown, id?: number) => {
         if (closed) return
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        const idLine = typeof id === "number" ? `id: ${id}\n` : ""
+        controller.enqueue(encoder.encode(`${idLine}data: ${JSON.stringify(data)}\n\n`))
       }
 
-      let lastVersion = initial.progressVersion
-      send(makeApiOk(traceId, { jobId, type: initial.type, status: initial.status, snapshot: initial.snapshot }))
+      controller.enqueue(encoder.encode("retry: 2000\n\n"))
+      const lastEventIdRaw = req.headers.get("last-event-id") ?? ""
+      const lastEventId = Number(lastEventIdRaw)
+      let lastVersion = Number.isFinite(lastEventId) && lastEventId > 0 ? Math.max(lastEventId, 0) : initial.progressVersion
+
+      send(makeApiOk(traceId, { jobId, type: initial.type, status: initial.status, snapshot: initial.snapshot }), initial.progressVersion)
       if (initial.status === "done" || initial.status === "error") {
         closed = true
         controller.close()
@@ -36,25 +42,35 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
       }
 
       const tick = async () => {
+        let lastPingAt = Date.now()
         while (!closed && !req.signal.aborted) {
-          await new Promise((r) => setTimeout(r, 800))
-          const row = await getJobById(jobId)
-          if (!row) continue
-          if (row.userId !== userId) continue
-          if (row.progressVersion === lastVersion) {
+          await new Promise((r) => setTimeout(r, 1000))
+          const now = Date.now()
+          if (now - lastPingAt >= 15000) {
+            lastPingAt = now
+            controller.enqueue(encoder.encode(`: ping ${now}\n\n`))
+          }
+          try {
+            const row = (await getJobById(jobId)) ?? (await getTvcJobById(jobId))
+            if (!row) continue
+            if (row.userId !== userId) continue
+            if (row.progressVersion === lastVersion) {
+              if (row.status === "done" || row.status === "error") {
+                closed = true
+                controller.close()
+                return
+              }
+              continue
+            }
+            lastVersion = row.progressVersion
+            send(makeApiOk(traceId, { jobId, type: row.type, status: row.status, snapshot: row.snapshot }), row.progressVersion)
             if (row.status === "done" || row.status === "error") {
               closed = true
               controller.close()
               return
             }
-            continue
-          }
-          lastVersion = row.progressVersion
-          send(makeApiOk(traceId, { jobId, type: row.type, status: row.status, snapshot: row.snapshot }))
-          if (row.status === "done" || row.status === "error") {
-            closed = true
-            controller.close()
-            return
+          } catch {
+            await new Promise((r) => setTimeout(r, 2000))
           }
         }
       }

@@ -1,0 +1,62 @@
+import { NextResponse, type NextRequest } from "next/server"
+import { z } from "zod"
+import { and, desc, eq, like, or, sql } from "drizzle-orm"
+import { getDb } from "coze-coding-dev-sdk"
+import { makeApiErr, makeApiOk } from "@/shared/api"
+import { getSessionFromRequest } from "@/shared/session"
+import { getTraceId } from "@/shared/trace"
+import { sharedResources } from "@/shared/schema"
+import { ensureSmoothLibraryMigration } from "@/shared/libraryMigration"
+
+const querySchema = z.object({
+  type: z.string().trim().min(1).max(50).optional(),
+  search: z.string().trim().max(200).optional(),
+  limit: z.coerce.number().int().min(0).max(200).optional(),
+  offset: z.coerce.number().int().min(0).max(10_000).optional()
+})
+
+export async function GET(req: NextRequest): Promise<Response> {
+  const traceId = getTraceId(req.headers)
+  const session = await getSessionFromRequest(req)
+  const userId = session?.userId
+  if (!userId) return NextResponse.json(makeApiErr(traceId, "AUTH_REQUIRED", "未登录或登录已过期"), { status: 401 })
+
+  await ensureSmoothLibraryMigration(userId, traceId)
+
+  const url = new URL(req.url)
+  const parsed = querySchema.safeParse({
+    type: url.searchParams.get("type") ?? undefined,
+    search: url.searchParams.get("search") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined,
+    offset: url.searchParams.get("offset") ?? undefined
+  })
+  if (!parsed.success) return NextResponse.json(makeApiErr(traceId, "VALIDATION_FAILED", "参数格式不正确"), { status: 400 })
+
+  const limit = parsed.data.limit ?? 100
+  const offset = parsed.data.offset ?? 0
+  const keyword = (parsed.data.search ?? "").trim()
+  const type = (parsed.data.type ?? "").trim()
+
+  const whereParts: any[] = []
+  whereParts.push(sql`NOT (${sharedResources.tags} @> ${JSON.stringify(["tts_sample"])}::jsonb)`)
+  if (type) whereParts.push(eq(sharedResources.type, type))
+  if (keyword) {
+    const likeValue = `%${keyword}%`
+    whereParts.push(or(like(sharedResources.name, likeValue), like(sharedResources.description, likeValue), sql`${sharedResources.tags}::text LIKE ${likeValue}`))
+  }
+  const whereClause = whereParts.length > 0 ? and(...whereParts) : undefined
+
+  const db = await getDb({ sharedResources })
+  const items =
+    limit <= 0
+      ? []
+      : await db
+          .select()
+          .from(sharedResources)
+          .where(whereClause as any)
+          .orderBy(desc(sharedResources.createdAt))
+          .limit(limit)
+          .offset(offset)
+
+  return NextResponse.json(makeApiOk(traceId, { items }), { status: 200 })
+}

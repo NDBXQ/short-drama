@@ -1,0 +1,18 @@
+{
+  "name": "tvc-video-generation",
+  "version": "1.0.0",
+  "description": "批量生成TVC视频片段，支持文生视频和图生视频，使用并发提升效率",
+  "tags": ["tvc", "video", "batch", "concurrent"],
+  "context_budget_tokens": 5000,
+  "allowed_tools": ["video.generate_batch", "video.generate_from_image"],
+  "model": "",
+  "owner": "Vibe Creating",
+  "last_updated": "2024-01-20",
+  "dependencies": ["tvc-reference-images"],
+  "triggers": [
+    "继续",
+    "下一步",
+    "生成视频",
+    "视频片段"
+  ]
+}

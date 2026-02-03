@@ -9,6 +9,7 @@ import { logger } from "@/shared/logger"
 import { insertReferenceImageJob, type ReferenceImageJobPayload, type ReferenceImageJobSnapshot } from "@/server/jobs/referenceImageDbQueue"
 import { kickReferenceImageWorker } from "@/server/jobs/referenceImageWorker"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 
 type PromptInput = {
   name: string
@@ -235,8 +236,8 @@ export class ImageGenerationService {
         const uploadedOriginalKey = await storage.uploadFile({ fileContent: imageBuffer, fileName: originalFileKey, contentType: "image/jpeg" })
         const uploadedThumbnailKey = await storage.uploadFile({ fileContent: thumbnailBuffer, fileName: thumbnailFileKey, contentType: "image/jpeg" })
 
-        const originalSignedUrl = await storage.generatePresignedUrl({ key: uploadedOriginalKey, expireTime: 604800 })
-        const thumbnailSignedUrl = await storage.generatePresignedUrl({ key: uploadedThumbnailKey, expireTime: 604800 })
+        const originalSignedUrl = await resolveStorageUrl(storage, uploadedOriginalKey)
+        const thumbnailSignedUrl = await resolveStorageUrl(storage, uploadedThumbnailKey)
 
         if (existing) {
           const [updated] = await db

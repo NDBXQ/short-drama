@@ -1,0 +1,21 @@
+{
+  "name": "tvc-script",
+  "version": "1.0.0",
+  "description": "创作专业的TVC广告剧本大纲，包含主题、目标受众、核心信息等",
+  "tags": ["tvc", "script", "advertising", "creative"],
+  "context_budget_tokens": 2000,
+  "allowed_tools": [],
+  "model": "",
+  "owner": "Vibe Creating",
+  "last_updated": "2024-01-20",
+  "dependencies": [],
+  "triggers": [
+    "创作",
+    "创建",
+    "帮我",
+    "我要",
+    "制作",
+    "开始创作",
+    "写个剧本"
+  ]
+}

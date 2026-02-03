@@ -34,10 +34,11 @@ export function useLibrarySelection(scope: Scope, category: string) {
 
     setBulkDeleting(true)
     try {
-      await deletePublicResources(uniqueIds)
+      const res = await deletePublicResources(uniqueIds)
       await onSuccess()
       setSelectedIds(new Set())
       setPreviewItem(null)
+      return res.deletedCount ?? 0
     } finally {
       setBulkDeleting(false)
     }

@@ -7,6 +7,7 @@ import { getSessionFromRequest } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
 import { ttsSpeakerSamples } from "@/shared/schema"
 import { getS3Storage } from "@/shared/storage"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 
 export const runtime = "nodejs"
 
@@ -43,11 +44,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const storage = getS3Storage()
   try {
-    const signed = await storage.generatePresignedUrl({ key: storageKey, expireTime: 60 * 10 })
-    return NextResponse.redirect(signed)
+    const url = await resolveStorageUrl(storage, storageKey)
+    return NextResponse.redirect(url)
   } catch {
     if (!fallbackUrl) return NextResponse.json(makeApiErr(traceId, "NOT_FOUND", "样音链接不存在"), { status: 404 })
     return NextResponse.redirect(fallbackUrl)
   }
 }
-

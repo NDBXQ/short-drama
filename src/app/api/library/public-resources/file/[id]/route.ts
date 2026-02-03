@@ -6,7 +6,9 @@ import { getSessionFromRequest } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
 import { makeApiErr } from "@/shared/api"
 import { getS3Storage } from "@/shared/storage"
+import { resolveStorageUrl } from "@/shared/storageUrl"
 import { and, eq } from "drizzle-orm"
+import { ensureSmoothLibraryMigration } from "@/shared/libraryMigration"
 
 export const runtime = "nodejs"
 
@@ -20,6 +22,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const userId = session?.userId
   if (!userId) return NextResponse.json(makeApiErr(traceId, "AUTH_REQUIRED", "未登录或登录已过期"), { status: 401 })
 
+  await ensureSmoothLibraryMigration(userId, traceId)
+
   const rawParams = await ctx.params
   const parsed = paramsSchema.safeParse(rawParams)
   if (!parsed.success) return NextResponse.json(makeApiErr(traceId, "VALIDATION_FAILED", "参数不正确"), { status: 400 })
@@ -30,6 +34,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const rows = await db
     .select({
       id: publicResources.id,
+      userId: publicResources.userId,
       previewUrl: publicResources.previewUrl,
       originalUrl: publicResources.originalUrl,
       previewStorageKey: publicResources.previewStorageKey,
@@ -41,6 +46,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const row = rows[0]
   if (!row) return NextResponse.json(makeApiErr(traceId, "NOT_FOUND", "资源不存在"), { status: 404 })
+  if (row.userId !== userId) return NextResponse.json(makeApiErr(traceId, "NOT_FOUND", "资源不存在"), { status: 404 })
 
   const storageKey = kind === "preview" ? row.previewStorageKey : row.originalStorageKey
   const fallbackUrl = kind === "preview" ? row.previewUrl : (row.originalUrl || row.previewUrl)
@@ -51,11 +57,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const storage = getS3Storage()
   try {
-    const signed = await storage.generatePresignedUrl({ key: storageKey, expireTime: 60 * 10 })
-    return NextResponse.redirect(signed)
+    const url = await resolveStorageUrl(storage, storageKey)
+    return NextResponse.redirect(url)
   } catch {
     if (!fallbackUrl) return NextResponse.json(makeApiErr(traceId, "NOT_FOUND", "资源链接不存在"), { status: 404 })
     return NextResponse.redirect(fallbackUrl)
   }
 }
-

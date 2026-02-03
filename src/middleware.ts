@@ -2,7 +2,9 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getSessionFromRequest } from "@/shared/session"
 
-const protectedPrefixes = ["/", "/script", "/video", "/library", "/help"]
+const protectedPrefixes = ["/", "/script", "/video", "/library", "/help", "/admin"]
+const adminAccount = (process.env.ADMIN_ACCOUNT ?? "admin").trim()
+const adminPanelEnabled = process.env.ADMIN_PANEL_ENABLED === "1" || process.env.NODE_ENV !== "production"
 
 /**
  * 判断当前路径是否需要登录
@@ -11,6 +13,7 @@ const protectedPrefixes = ["/", "/script", "/video", "/library", "/help"]
  */
 function isProtectedPath(pathname: string): boolean {
   if (pathname === "/") return true
+  if (pathname.startsWith("/admin")) return true
   return protectedPrefixes.some((p) => p !== "/" && pathname.startsWith(p))
 }
 
@@ -28,6 +31,13 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   const session = await getSessionFromRequest(req)
 
+  if (pathname.startsWith("/admin") && !adminPanelEnabled) {
+    const url = req.nextUrl.clone()
+    url.pathname = "/"
+    url.search = ""
+    return NextResponse.redirect(url)
+  }
+
   if (pathname === "/login") {
     if (session) {
       const url = req.nextUrl.clone()
@@ -44,7 +54,14 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (!session) {
     const url = req.nextUrl.clone()
     url.pathname = "/login"
-    url.searchParams.set("next", pathname)
+    url.searchParams.set("next", `${pathname}${req.nextUrl.search ?? ""}`)
+    return NextResponse.redirect(url)
+  }
+
+  if (pathname.startsWith("/admin") && session.account !== adminAccount) {
+    const url = req.nextUrl.clone()
+    url.pathname = "/"
+    url.search = ""
     return NextResponse.redirect(url)
   }
 

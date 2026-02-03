@@ -1,0 +1,19 @@
+{
+  "name": "tvc-storyboard",
+  "version": "1.0.0",
+  "description": "创作详细的TVC分镜头脚本，包含镜头编号、场景描述、时长等",
+  "tags": ["tvc", "storyboard", "script", "shot-list"],
+  "context_budget_tokens": 3000,
+  "allowed_tools": [],
+  "model": "",
+  "owner": "Vibe Creating",
+  "last_updated": "2024-01-20",
+  "dependencies": ["tvc-script"],
+  "triggers": [
+    "继续",
+    "下一步",
+    "写脚本",
+    "分镜头",
+    "故事板"
+  ]
+}

@@ -71,6 +71,7 @@ export async function aiGeneratePublicResource(input: {
     const resourceName = input.name?.trim() || `AI-${input.type}-${new Date().toISOString().slice(0, 10)}`
 
     const payload = insertPublicResourceSchema.parse({
+      userId: session.userId,
       type: input.type,
       source: "ai",
       name: resourceName,
@@ -110,4 +111,3 @@ export async function aiGeneratePublicResource(input: {
     return { success: false, message: anyErr?.message || "生成失败" }
   }
 }
-

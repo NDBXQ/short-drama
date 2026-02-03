@@ -7,6 +7,26 @@ body {
 :root {
   --app-gutter: clamp(16px, 2vw, 32px);
   --app-container-max: 1200px;
+
+  --theme-bg: radial-gradient(1200px 600px at 15% 10%, rgba(109, 94, 247, 0.22) 0%, rgba(15, 23, 42, 0) 55%),
+    radial-gradient(900px 600px at 80% 40%, rgba(16, 185, 129, 0.12) 0%, rgba(15, 23, 42, 0) 55%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(2, 6, 23, 0.96) 100%);
+  --theme-surface: rgba(2, 6, 23, 0.55);
+  --theme-surface-2: rgba(2, 6, 23, 0.45);
+  --theme-surface-3: rgba(255, 255, 255, 0.04);
+  --theme-border: rgba(255, 255, 255, 0.10);
+  --theme-border-strong: rgba(255, 255, 255, 0.14);
+  --theme-text: rgba(255, 255, 255, 0.92);
+  --theme-text-strong: rgba(255, 255, 255, 0.96);
+  --theme-text-muted: rgba(255, 255, 255, 0.62);
+  --theme-text-faint: rgba(255, 255, 255, 0.45);
+  --theme-accent: #6d5ef7;
+  --theme-accent-2: #4f46e5;
+  --theme-shadow: 0 20px 60px rgba(2, 6, 23, 0.35);
+  --theme-shadow-strong: 0 26px 90px rgba(15, 23, 42, 0.22);
+  --theme-radius: 18px;
+  --theme-radius-sm: 14px;
+  --theme-blur: blur(14px);
 }
 
 @media (min-width: 1440px) {
@@ -37,4 +57,28 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+body {
+  background: #020617;
+  color: var(--theme-text);
+}
+
+a {
+  color: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  border: 2px solid rgba(2, 6, 23, 0.6);
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(2, 6, 23, 0.35);
 }

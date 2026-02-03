@@ -19,7 +19,8 @@ export function PublicResourcePreviewModal({ open, item, onClose }: PublicResour
   const subtitle = item.subtitle ?? ""
   const kind = (() => {
     if (!url) return "none"
-    if (item.scope === "public") {
+    const scope = item.scope === "public" ? "library" : item.scope
+    if (scope === "library" || scope === "shared") {
       if (item.publicCategory === "videos") return "video"
       if (item.publicCategory === "audios") return "audio"
       return "image"
@@ -35,7 +36,9 @@ export function PublicResourcePreviewModal({ open, item, onClose }: PublicResour
     if (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".m4a") || lower.endsWith(".aac") || lower.endsWith(".ogg")) return "audio"
     return "unknown"
   })()
-  const isStablePublicResourceUrl = Boolean(url?.startsWith("/api/library/public-resources/file/"))
+  const isStablePublicResourceUrl = Boolean(
+    url?.startsWith("/api/library/public-resources/file/") || url?.startsWith("/api/library/shared-resources/file/")
+  )
 
   return (
     <>
