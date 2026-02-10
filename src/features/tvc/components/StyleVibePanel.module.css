@@ -238,6 +238,65 @@
   padding: 10px 0 6px;
 }
 
+.userImageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 96px);
+  gap: 6px;
+  align-items: start;
+  justify-content: start;
+}
+
+.userImageGrid .agentImageMeta {
+  padding: 4px 6px;
+}
+
+.userImageGrid .agentImageLine {
+  font-size: 9px;
+}
+
+.userImageGrid .agentImageCard {
+  border-radius: 10px;
+}
+
+.userImageGrid .agentImageThumbWrap {
+  background: rgba(2, 6, 23, 0.42);
+}
+
+.userImageGrid .agentImageCardClickable:hover {
+  transform: none;
+}
+
+.userImageGrid .agentImageCardClickable:active {
+  transform: none;
+}
+
+.userImageGrid .agentImageCardClickable:focus-visible {
+  outline-width: 1px;
+  outline-offset: 1px;
+}
+
+.userImageGrid .agentImageCardClickable {
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.userImageGrid .agentImageCardClickable:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 860px) {
+  .userImageGrid {
+    grid-template-columns: repeat(auto-fill, 84px);
+  }
+}
+
+@media (max-width: 520px) {
+  .userImageGrid {
+    grid-template-columns: repeat(auto-fill, 72px);
+    gap: 5px;
+  }
+}
+
 .stepZeroWrap {
   display: grid;
   gap: 10px;
