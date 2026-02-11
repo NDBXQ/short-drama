@@ -2,14 +2,6 @@ import type { ApiErr, ApiOk } from "@/shared/api"
 
 type ApiResult<T> = ApiOk<T> | ApiErr
 
-function utf8Bytes(s: string): number {
-  try {
-    return new TextEncoder().encode(s).length
-  } catch {
-    return s.length
-  }
-}
-
 function shrinkShortDramaPayload(input: {
   planningResult: any
   worldSetting: any
@@ -69,14 +61,14 @@ export function buildOutlineStoryTextFromShortDrama(input: {
   characterSetting: any
   maxBytes?: number
 }): string {
-  const maxBytes = Math.max(8_000, Math.floor(input.maxBytes ?? 49_000))
+  const maxChars = Math.max(8_000, Math.floor(input.maxBytes ?? 49_000))
   const full = {
     planning_result: input.planningResult,
     world_setting: input.worldSetting,
     character_setting: input.characterSetting
   }
   const fullText = JSON.stringify(full)
-  if (utf8Bytes(fullText) <= maxBytes) return fullText
+  if (fullText.length <= maxChars) return fullText
 
   const shrunk = shrinkShortDramaPayload({
     planningResult: input.planningResult,
@@ -84,10 +76,10 @@ export function buildOutlineStoryTextFromShortDrama(input: {
     characterSetting: input.characterSetting
   })
   const shrunkText = JSON.stringify(shrunk)
-  if (utf8Bytes(shrunkText) <= maxBytes) return shrunkText
+  if (shrunkText.length <= maxChars) return shrunkText
 
   const minimal = JSON.stringify({ planning_result: shrunk.planning_result })
-  if (utf8Bytes(minimal) <= maxBytes) return minimal
+  if (minimal.length <= maxChars) return minimal
 
   throw new Error("短剧策划结果过长，无法生成大纲（story_text 超出限制）")
 }
@@ -128,6 +120,7 @@ export async function patchStoryShortDramaMetadata(storyId: string, input: {
   planningResult: unknown
   worldSetting: unknown
   characterSetting: unknown
+  planningConfirmedAt?: number
 }): Promise<void> {
   const res = await fetch(`/api/library/stories/${encodeURIComponent(storyId)}/metadata`, {
     method: "PATCH",
@@ -136,7 +129,8 @@ export async function patchStoryShortDramaMetadata(storyId: string, input: {
       shortDrama: {
         planningResult: input.planningResult,
         worldSetting: input.worldSetting,
-        characterSetting: input.characterSetting
+        characterSetting: input.characterSetting,
+        ...(typeof input.planningConfirmedAt === "number" ? { planningConfirmedAt: Math.max(0, Math.trunc(input.planningConfirmedAt)) } : {})
       }
     })
   })

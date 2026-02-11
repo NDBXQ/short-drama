@@ -9,10 +9,6 @@ import { ListboxSelect } from "@/shared/ui/ListboxSelect"
 import { logger } from "@/shared/logger"
 import type { ApiErr, ApiOk } from "@/shared/api"
 import {
-  buildOutlineStoryTextFromShortDrama,
-  callShortDramaCharacterSettings,
-  callShortDramaPlanning,
-  callShortDramaWorldSetting,
   patchStoryShortDramaMetadata
 } from "../api/shortDrama"
 
@@ -99,6 +95,41 @@ export function ScriptCreationDialog({
     })
 
     try {
+      if (mode !== "source") {
+        const res = await fetch("/api/library/stories", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            storyType: "brief",
+            title: title.trim(),
+            storyText,
+            ratio,
+            resolution,
+            style: shotStyle
+          })
+        })
+        const json = (await res.json().catch(() => null)) as ApiOk<unknown> | ApiErr | null
+        if (!res.ok || !json || (json as ApiErr).ok === false) {
+          const errJson = (json as ApiErr | null) ?? null
+          setErrorText(errJson?.error?.message ?? "创建失败，请稍后重试")
+          return
+        }
+        const okJson = json as ApiOk<unknown>
+        const data = okJson.data as unknown
+        const storyId =
+          typeof data === "object" && data !== null && "storyId" in data && typeof (data as { storyId?: unknown }).storyId === "string"
+            ? String((data as { storyId: string }).storyId)
+            : ""
+        if (!storyId) {
+          setErrorText("创建成功但未返回 storyId，请稍后重试")
+          return
+        }
+        const next = `/script/workspace/${encodeURIComponent(storyId)}?mode=brief`
+        router.push(`/script/short-drama/${encodeURIComponent(storyId)}?next=${encodeURIComponent(next)}`)
+        onClose()
+        return
+      }
+
       const payload = await (async () => {
         if (mode === "source") {
           return {
@@ -111,38 +142,13 @@ export function ScriptCreationDialog({
           }
         }
 
-        const planningResult = await callShortDramaPlanning(storyText)
-        const anyPlanning = planningResult as any
-        const rawGenres = Array.isArray(anyPlanning?.theme_module?.genres) ? anyPlanning.theme_module.genres : []
-        const genres = rawGenres.map((v: any) => String(v ?? "").trim()).filter(Boolean).slice(0, 50)
-        const core = anyPlanning?.theme_module?.core_requirements ?? {}
-        const worldview_setting = typeof core?.worldview_setting === "string" ? core.worldview_setting : ""
-        const core_conflict = typeof core?.core_conflict === "string" ? core.core_conflict : ""
-        const protagonist_setting = typeof core?.protagonist_setting === "string" ? core.protagonist_setting : ""
-
-        const worldSetting = await callShortDramaWorldSetting({ genres, worldview_setting, core_conflict })
-        const characterSetting = await callShortDramaCharacterSettings({
-          genres,
-          worldview_setting,
-          core_conflict,
-          protagonist_setting
-        })
-
-        const outlineStoryText = buildOutlineStoryTextFromShortDrama({
-          planningResult,
-          worldSetting,
-          characterSetting,
-          maxBytes: 49_000
-        })
-
         return {
           input_type: inputType,
-          story_text: outlineStoryText,
+          story_text: storyText,
           title: title.trim(),
           ratio,
           resolution,
-          style: shotStyle,
-          _shortDramaMeta: { planningResult, worldSetting, characterSetting }
+          style: shotStyle
         }
       })()
 
@@ -201,13 +207,8 @@ export function ScriptCreationDialog({
         durationMs
       })
 
-      if (mode !== "source" && _shortDramaMeta) {
-        await patchStoryShortDramaMetadata(storyId, _shortDramaMeta)
-      }
-
-      // 跳转到工作台并带上 storyId
-      const m = mode === "source" ? "source" : "brief"
-      router.push(`/script/workspace/${encodeURIComponent(storyId)}?mode=${m}`)
+      if (_shortDramaMeta) await patchStoryShortDramaMetadata(storyId, _shortDramaMeta)
+      router.push(`/script/workspace/${encodeURIComponent(storyId)}?mode=source`)
       onClose()
       
     } catch (err) {
@@ -222,7 +223,7 @@ export function ScriptCreationDialog({
         errorName: anyErr?.name,
         errorMessage: anyErr?.message
       })
-      setErrorText("网络异常，请检查网络或稍后重试")
+      setErrorText(anyErr?.message?.trim() ? String(anyErr.message) : "网络异常，请检查网络或稍后重试")
     } finally {
       setIsSubmitting(false)
     }
