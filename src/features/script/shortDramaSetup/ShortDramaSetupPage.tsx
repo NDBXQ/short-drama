@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import styles from "./ShortDramaSetupPage.module.css"
+import navStyles from "../workspace/components/shortDrama/ShortDramaStepsNav.module.css"
 import { ShortDramaPanel } from "../workspace/components/shortDrama/ShortDramaPanel"
+import type { ShortDramaStepKey } from "../workspace/components/shortDrama/ShortDramaStepsNav"
+import { ShortDramaStepsNav } from "../workspace/components/shortDrama/ShortDramaStepsNav"
 import type { ApiErr, ApiOk } from "@/shared/api"
 import { buildOutlineStoryTextFromShortDrama } from "../workspace/api/shortDrama"
 
@@ -33,6 +36,7 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, hasOutlines: hasOu
   const next = searchParams.get("next") || ""
 
   const [shortDrama, setShortDrama] = useState<any>(() => (storyMetadata as any)?.shortDrama ?? {})
+  const [activeStep, setActiveStep] = useState<ShortDramaStepKey>("planning")
   const ready = useMemo(() => isShortDramaReady(shortDrama), [shortDrama])
   const planningOk = Boolean(shortDrama && typeof shortDrama === "object" && (shortDrama as any).planningResult)
   const confirmed = Boolean(
@@ -51,12 +55,13 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, hasOutlines: hasOu
     return `/script/workspace/${encodeURIComponent(storyId)}?mode=brief`
   })()
 
-  const onContinue = async () => {
-    if (!ready || generating) return
+  const gotoOutline = async () => {
+    if (generating) return
     if (hasOutlines) {
       router.push(continueUrl)
       return
     }
+    if (!ready) return
     setGenerating(true)
     setErrorText(null)
     try {
@@ -135,39 +140,44 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, hasOutlines: hasOu
     }
   }
 
+  const outlineDisabled = generating || (!hasOutlines && !ready)
+  const outlineBadge = generating ? "生成中…" : hasOutlines ? "已生成" : ready ? "未生成" : "待完善"
+  const outlineBadgeClass = outlineBadge === "已生成" ? navStyles.badgeOk : navStyles.badgeMuted
+
   return (
     <main className={styles.container}>
       <section className={styles.layout} aria-label="短剧信息布局">
         <aside className={styles.rail} aria-label="创作流程">
           <div className={styles.card}>
-            <div className={styles.cardTitle}>短剧信息</div>
+            <div className={styles.cardTitle}>剧本信息</div>
             <div className={styles.flowList}>
-              <div className={styles.flowItem}>
-                <div className={styles.flowName}>短剧信息</div>
-                <div className={`${styles.flowBadge} ${styles.flowBadgeOk}`}>当前</div>
-              </div>
-              <div className={styles.flowItem}>
-                <div className={styles.flowName}>剧本大纲</div>
-                <div className={styles.flowBadge}>下一步</div>
-              </div>
-              <div className={styles.flowItem}>
-                <div className={styles.flowName}>分镜</div>
-                <div className={styles.flowBadge}>后续</div>
-              </div>
-              <div className={styles.flowItem}>
-                <div className={styles.flowName}>生图</div>
-                <div className={styles.flowBadge}>后续</div>
-              </div>
-              <div className={styles.flowItem}>
-                <div className={styles.flowName}>生视频</div>
-                <div className={styles.flowBadge}>后续</div>
-              </div>
+              <ShortDramaStepsNav
+                shortDrama={shortDrama}
+                active={activeStep}
+                onChange={setActiveStep}
+                extraItems={
+                  <button type="button" className={navStyles.navItem} disabled={outlineDisabled} onClick={gotoOutline}>
+                    <div className={navStyles.navRow}>
+                      <div className={navStyles.navTitle}>剧本大纲</div>
+                      <div className={outlineBadgeClass}>{outlineBadge}</div>
+                    </div>
+                    <div className={navStyles.navDesc}>{hasOutlines ? "已生成可查看" : ready ? "生成后进入" : "需先完成短剧信息"}</div>
+                  </button>
+                }
+              />
             </div>
           </div>
         </aside>
 
         <section className={styles.panelCard} aria-label="短剧信息编辑">
-          <ShortDramaPanel storyId={storyId} shortDrama={shortDrama} onShortDramaUpdate={setShortDrama} />
+          <ShortDramaPanel
+            storyId={storyId}
+            shortDrama={shortDrama}
+            onShortDramaUpdate={setShortDrama}
+            showNav={false}
+            active={activeStep}
+            onActiveChange={setActiveStep}
+          />
         </section>
 
         <aside className={styles.rail} aria-label="检查清单与操作">
@@ -229,7 +239,7 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, hasOutlines: hasOu
               <button type="button" className={styles.secondaryBtn} disabled={!ready || generating || !hasOutlines} onClick={onRegenerateOutline}>
                 重新生成大纲
               </button>
-              <button type="button" className={styles.primaryBtn} disabled={!ready || generating} onClick={onContinue}>
+              <button type="button" className={styles.primaryBtn} disabled={outlineDisabled} onClick={gotoOutline}>
                 {generating ? "生成中…" : hasOutlines ? "进入大纲" : "继续下一步"}
               </button>
             </div>

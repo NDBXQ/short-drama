@@ -55,14 +55,14 @@ export async function POST(req: Request): Promise<Response> {
     })
   }
 
-  const url = readEnv("OUTLINE_API_URL")
-  const token = readEnv("OUTLINE_API_TOKEN")
+  const url = readEnv("SHORT_DRAMA_OUTLINE_API_URL")
+  const token = readEnv("SHORT_DRAMA_OUTLINE_API_TOKEN")
   if (!url || !token) {
     return NextResponse.json(
       makeApiErr(
         traceId,
         "COZE_NOT_CONFIGURED",
-        "Coze 未配置，请设置 COZE_API_URL 与 COZE_API_TOKEN"
+        "Coze 未配置，请设置 SHORT_DRAMA_OUTLINE_API_URL 与 SHORT_DRAMA_OUTLINE_API_TOKEN"
       ),
       { status: 500 }
     )

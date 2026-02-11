@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import styles from "./ShortDramaPlanningCard.module.css"
 import { callShortDramaCharacterSettings, callShortDramaWorldSetting, patchStoryShortDramaMetadata } from "../../api/shortDrama"
 import { DurationRangeField, RangeField, Section, SmallField, TextField } from "./ShortDramaPlanningFields"
-import { cloneJson, sanitizeGenres, toText, unwrapPlanningResult } from "./shortDramaPlanningModel"
+import { cloneJson, sanitizeGenres, toText, unwrapCharacterSettings, unwrapPlanningResult } from "./shortDramaPlanningModel"
 
 type ShortDramaPlanningCardProps = Readonly<{
   storyId: string
@@ -118,7 +118,94 @@ export function ShortDramaPlanningCard({
     const inner = draft && typeof draft === "object" ? cloneJson(draft) : {}
     const tm = (inner as any).theme_module
     if (tm && typeof tm === "object") (tm as any).genres = sanitizeGenres((tm as any).genres)
+
+    const clampInt = (v: unknown, min: number, max: number, fallback?: number): number | undefined => {
+      const n = Number(v)
+      const base = Number.isFinite(n) ? Math.trunc(n) : fallback
+      if (base === undefined) return undefined
+      if (base < min) return min
+      if (base > max) return max
+      return base
+    }
+
+    const snapInt = (v: unknown, step: number, min: number, max: number, fallback?: number): number | undefined => {
+      const n = Number(v)
+      const base = Number.isFinite(n) ? n : fallback
+      if (base === undefined) return undefined
+      const snapped = Math.round(base / step) * step
+      return clampInt(snapped, min, max)
+    }
+
+    const pm = (inner as any).parameter_module
+    const pmObj = pm && typeof pm === "object" ? pm : {}
+    const duration = (pmObj as any).single_episode_duration
+    const durationObj = duration && typeof duration === "object" ? duration : {}
+
+    ;(inner as any).parameter_module = {
+      ...pmObj,
+      total_episodes: clampInt((pmObj as any).total_episodes, 40, 150, 60),
+      dialogue_word_ratio: clampInt((pmObj as any).dialogue_word_ratio, 30, 60, 40),
+      main_characters_limit: clampInt((pmObj as any).main_characters_limit, 1, 10, 10),
+      scenes_per_episode_limit: clampInt((pmObj as any).scenes_per_episode_limit, 1, 10, 3),
+      word_limit_per_episode: snapInt((pmObj as any).word_limit_per_episode, 50, 500, 2000, 600),
+      single_episode_duration: {
+        ...durationObj,
+        min: clampInt((durationObj as any).min, 1, 5, 3),
+        max: clampInt((durationObj as any).max, 1, 5, 4),
+        unit: typeof (durationObj as any).unit === "string" && (durationObj as any).unit.trim() ? (durationObj as any).unit : "分钟"
+      }
+    }
     return inner
+  }
+
+  const triggerAllCharacterImageGeneration = async (nextCharacterSetting: unknown): Promise<void> => {
+    const normalizedCharacters = unwrapCharacterSettings(nextCharacterSetting)
+    const inner = normalizedCharacters.inner && typeof normalizedCharacters.inner === "object" ? normalizedCharacters.inner : {}
+    const characters = Array.isArray((inner as any).characters) ? (inner as any).characters : []
+    if (!characters.length) return
+
+    const pickText = (v: unknown) => String(v ?? "").trim()
+    const shrink = (s: string, max = 800) => (s.length > max ? s.slice(0, max) : s)
+    const buildPrompt = (ch: any, index: number) => {
+      const name = pickText(ch?.character_name ?? ch?.characterName ?? ch?.name) || `角色${index + 1}`
+      if (/^旁白$/u.test(name) || /^narrator$/i.test(name)) return null
+
+      const type = pickText(ch?.character_type ?? ch?.characterType ?? ch?.type)
+      const age = pickText(ch?.age)
+      const occupation = pickText(ch?.occupation)
+      const appearance = pickText(ch?.appearance)
+      const physique = pickText(ch?.physique)
+      const hairstyle = pickText(ch?.hairstyle)
+      const clothing = pickText(ch?.clothing)
+
+      const lines: string[] = []
+      lines.push("请生成一张写实影视剧角色设定图。")
+      lines.push(`角色姓名：${shrink(name, 60)}。`)
+      if (type) lines.push(`角色类型：${shrink(type, 60)}。`)
+      if (age) lines.push(`年龄：${shrink(age, 40)}。`)
+      if (occupation) lines.push(`职业：${shrink(occupation, 120)}。`)
+      if (appearance) lines.push(`相貌：${shrink(appearance)}。`)
+      if (physique) lines.push(`体格：${shrink(physique)}。`)
+      if (hairstyle) lines.push(`发型：${shrink(hairstyle)}。`)
+      if (clothing) lines.push(`服装：${shrink(clothing)}。`)
+      lines.push("要求：单人，人物主体清晰，构图干净，电影级光影，高清细节，背景简洁，不要文字、水印、logo，避免多人同框。")
+
+      return { name, prompt: lines.join("\n") }
+    }
+
+    const prompts = characters.map(buildPrompt).filter(Boolean).slice(0, 50) as Array<{ name: string; prompt: string }>
+    if (prompts.length === 0) return
+    const res = await fetch("/api/video-creation/images/generate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        storyId,
+        async: true,
+        forceRegenerate: false,
+        prompts: prompts.map((p) => ({ name: p.name, prompt: p.prompt, category: "role" }))
+      })
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
   }
 
   const extractGenerationInputs = (innerPlanning: any): {
@@ -215,6 +302,8 @@ export function ShortDramaPlanningCard({
         characterSetting: nextCharacterSetting,
         planningConfirmedAt: confirmedAt
       })
+
+      triggerAllCharacterImageGeneration(nextCharacterSetting).catch(() => null)
     } catch (e) {
       const anyErr = e as { message?: string }
       setGenerateErrorText(anyErr?.message ?? "生成失败，请稍后重试")
@@ -358,18 +447,18 @@ export function ShortDramaPlanningCard({
             unit="集"
             value={getInt(parameterModule?.total_episodes, 60)}
             editing={editing}
-            min={1}
-            max={120}
-            onChange={(v) => updateParams({ total_episodes: clampInt(v, 1, 120) })}
+            min={40}
+            max={150}
+            onChange={(v) => updateParams({ total_episodes: clampInt(v, 40, 150) })}
           />
           <RangeField
             label="对白占比"
             unit="%"
             value={getInt(parameterModule?.dialogue_word_ratio, 40)}
             editing={editing}
-            min={0}
-            max={100}
-            onChange={(v) => updateParams({ dialogue_word_ratio: clampInt(v, 0, 100) })}
+            min={30}
+            max={60}
+            onChange={(v) => updateParams({ dialogue_word_ratio: clampInt(v, 30, 60) })}
           />
           <RangeField
             label="主要角色上限"
@@ -377,8 +466,8 @@ export function ShortDramaPlanningCard({
             value={getInt(parameterModule?.main_characters_limit, 10)}
             editing={editing}
             min={1}
-            max={20}
-            onChange={(v) => updateParams({ main_characters_limit: clampInt(v, 1, 20) })}
+            max={10}
+            onChange={(v) => updateParams({ main_characters_limit: clampInt(v, 1, 10) })}
           />
           <RangeField
             label="单集场景上限"
@@ -392,12 +481,12 @@ export function ShortDramaPlanningCard({
           <RangeField
             label="单集字数上限"
             unit="字"
-            value={getInt(parameterModule?.word_limit_per_episode, 1200)}
+            value={getInt(parameterModule?.word_limit_per_episode, 600)}
             editing={editing}
-            min={200}
-            max={3000}
+            min={500}
+            max={2000}
             step={50}
-            onChange={(v) => updateParams({ word_limit_per_episode: clampInt(v, 200, 3000) })}
+            onChange={(v) => updateParams({ word_limit_per_episode: clampInt(v, 500, 2000) })}
           />
           <DurationRangeField
             unit={toText(duration?.unit) || "分钟"}
@@ -405,9 +494,9 @@ export function ShortDramaPlanningCard({
             maxValue={getInt(duration?.max, 4)}
             editing={editing}
             min={1}
-            max={10}
+            max={5}
             onChange={(next) => {
-              updateParams({ single_episode_duration: { ...duration, min: clampInt(next.min, 1, 10), max: clampInt(next.max, 1, 10), unit: toText(duration?.unit) || "分钟" } })
+              updateParams({ single_episode_duration: { ...duration, min: clampInt(next.min, 1, 5), max: clampInt(next.max, 1, 5), unit: toText(duration?.unit) || "分钟" } })
             }}
           />
         </div>

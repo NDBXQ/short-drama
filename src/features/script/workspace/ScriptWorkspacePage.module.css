@@ -17,7 +17,7 @@
 .grid {
   --workspace-sidebar-width: 420px;
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr) 10px var(--workspace-sidebar-width);
+  grid-template-columns: 260px minmax(0, 1fr) 10px var(--workspace-sidebar-width);
   column-gap: 12px;
   row-gap: 24px;
   align-items: stretch;

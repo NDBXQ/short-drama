@@ -8,6 +8,7 @@ import { updateStoryStatus } from "@/features/video/utils/storyStatus"
 import { stories, storyOutlines, storyboards, type StoryboardScriptContent } from "@/shared/schema/story"
 import { normalizeShotStyleId } from "@/shared/shotStyle"
 import { mergeStoryboardVideoInfo } from "@/server/shared/storyboard/storyboardAssets"
+import { adaptShortDramaOutlineToOutlineList, buildShortDramaOutlineRequestBody } from "./shortDramaOutlineAdapter"
 
 function extractStoryOriginal(data: unknown): string | null {
   if (!data || typeof data !== "object") return null
@@ -35,17 +36,18 @@ export async function runGenerateOutline(input: {
   style?: string
 }): Promise<{ storyId: string; coze: unknown; outlineTotal: number; durationMs: number; cozeStatus: number }> {
   const start = Date.now()
-  const url = readEnv("OUTLINE_API_URL")
-  const token = readEnv("OUTLINE_API_TOKEN")
+  const url = readEnv("SHORT_DRAMA_OUTLINE_API_URL")
+  const token = readEnv("SHORT_DRAMA_OUTLINE_API_TOKEN")
   if (!url || !token) throw new Error("COZE_NOT_CONFIGURED")
 
   const db = await getDb({ stories, storyOutlines, storyboards })
+  const requestBody = buildShortDramaOutlineRequestBody({ input_type: input.input_type, story_text: input.story_text })
   const coze = await callCozeRunEndpoint({
     traceId: input.traceId,
     url,
     token,
-    body: { input_type: input.input_type, story_text: input.story_text },
-    module: "coze"
+    body: requestBody,
+    module: "coze_short_drama_outline"
   })
 
   const ratio = input.ratio?.trim() || "16:9"
@@ -106,22 +108,35 @@ export async function runGenerateOutline(input: {
   })
 
   const outlineData = coze.data as unknown
-  const list =
-    typeof outlineData === "object" &&
-    outlineData !== null &&
-    "outline_original_list" in outlineData &&
-    Array.isArray((outlineData as { outline_original_list?: unknown }).outline_original_list)
-      ? ((outlineData as { outline_original_list: Array<{ outline?: unknown; original?: unknown }> })
-          .outline_original_list as Array<{ outline?: unknown; original?: unknown }>)
-      : []
+  const list = (() => {
+    if (
+      typeof outlineData === "object" &&
+      outlineData !== null &&
+      "outline_original_list" in outlineData &&
+      Array.isArray((outlineData as { outline_original_list?: unknown }).outline_original_list)
+    ) {
+      return (outlineData as { outline_original_list: Array<{ outline?: unknown; original?: unknown }> })
+        .outline_original_list as Array<{ outline?: unknown; original?: unknown }>
+    }
+    const adapted = adaptShortDramaOutlineToOutlineList(outlineData)
+    return adapted.map((it) => ({ outline: it.outline, original: it.original }))
+  })()
 
-  if (list.length > 0) {
+  const persistedList =
+    list.length > 0
+      ? list
+      : (() => {
+          const rawText = typeof outlineData === "string" ? outlineData : JSON.stringify(outlineData)
+          return [{ outline: title ?? "大纲", original: rawText }]
+        })()
+
+  if (persistedList.length > 0) {
     if (input.storyId) {
       await db.delete(storyOutlines).where(eq(storyOutlines.storyId, input.storyId))
     }
 
     await db.insert(storyOutlines).values(
-      list.map((item, idx) => {
+      persistedList.map((item, idx) => {
         return {
           storyId: story.id,
           sequence: idx + 1,
@@ -135,12 +150,18 @@ export async function runGenerateOutline(input: {
   await updateStoryStatus(story.id, {
     status: "ready",
     progressStage: "storyboard_text",
-    metadataPatch: { progress: { outlineTotal: list.length } },
+    metadataPatch: { progress: { outlineTotal: persistedList.length } },
     stageDetail: { stage: "outline", state: "success", durationMs: Date.now() - start },
     traceId: input.traceId
   })
 
-  return { storyId: story.id, coze: coze.data, outlineTotal: list.length, durationMs: Date.now() - start, cozeStatus: coze.status }
+  return {
+    storyId: story.id,
+    coze: coze.data,
+    outlineTotal: persistedList.length,
+    durationMs: Date.now() - start,
+    cozeStatus: coze.status
+  }
 }
 
 export async function runGenerateStoryboardText(input: {

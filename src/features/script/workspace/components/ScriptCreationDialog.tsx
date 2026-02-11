@@ -9,6 +9,7 @@ import { ListboxSelect } from "@/shared/ui/ListboxSelect"
 import { logger } from "@/shared/logger"
 import type { ApiErr, ApiOk } from "@/shared/api"
 import {
+  callShortDramaPlanning,
   patchStoryShortDramaMetadata
 } from "../api/shortDrama"
 
@@ -34,6 +35,7 @@ export function ScriptCreationDialog({
   const [content, setContent] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
+  const [briefStoryId, setBriefStoryId] = useState<string | null>(null)
 
   const titleCount = title.length
   const contentCount = content.length
@@ -50,6 +52,8 @@ export function ScriptCreationDialog({
   
   useEffect(() => {
     if (!open) return
+    setBriefStoryId(null)
+    setErrorText(null)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
     return () => {
@@ -96,34 +100,43 @@ export function ScriptCreationDialog({
 
     try {
       if (mode !== "source") {
-        const res = await fetch("/api/library/stories", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            storyType: "brief",
-            title: title.trim(),
-            storyText,
-            ratio,
-            resolution,
-            style: shotStyle
+        const storyId = await (async () => {
+          if (briefStoryId?.trim()) return briefStoryId.trim()
+          const res = await fetch("/api/library/stories", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              storyType: "brief",
+              title: title.trim(),
+              storyText,
+              ratio,
+              resolution,
+              style: shotStyle
+            })
           })
+          const json = (await res.json().catch(() => null)) as ApiOk<unknown> | ApiErr | null
+          if (!res.ok || !json || (json as ApiErr).ok === false) {
+            const errJson = (json as ApiErr | null) ?? null
+            throw new Error(errJson?.error?.message ?? "创建失败，请稍后重试")
+          }
+          const okJson = json as ApiOk<unknown>
+          const data = okJson.data as unknown
+          const createdStoryId =
+            typeof data === "object" && data !== null && "storyId" in data && typeof (data as { storyId?: unknown }).storyId === "string"
+              ? String((data as { storyId: string }).storyId)
+              : ""
+          if (!createdStoryId) throw new Error("创建成功但未返回 storyId，请稍后重试")
+          setBriefStoryId(createdStoryId)
+          return createdStoryId
+        })()
+
+        const planning = await callShortDramaPlanning(storyText)
+        await patchStoryShortDramaMetadata(storyId, {
+          planningResult: planning,
+          worldSetting: null,
+          characterSetting: null
         })
-        const json = (await res.json().catch(() => null)) as ApiOk<unknown> | ApiErr | null
-        if (!res.ok || !json || (json as ApiErr).ok === false) {
-          const errJson = (json as ApiErr | null) ?? null
-          setErrorText(errJson?.error?.message ?? "创建失败，请稍后重试")
-          return
-        }
-        const okJson = json as ApiOk<unknown>
-        const data = okJson.data as unknown
-        const storyId =
-          typeof data === "object" && data !== null && "storyId" in data && typeof (data as { storyId?: unknown }).storyId === "string"
-            ? String((data as { storyId: string }).storyId)
-            : ""
-        if (!storyId) {
-          setErrorText("创建成功但未返回 storyId，请稍后重试")
-          return
-        }
+
         const next = `/script/workspace/${encodeURIComponent(storyId)}?mode=brief`
         router.push(`/script/short-drama/${encodeURIComponent(storyId)}?next=${encodeURIComponent(next)}`)
         onClose()
@@ -227,7 +240,7 @@ export function ScriptCreationDialog({
     } finally {
       setIsSubmitting(false)
     }
-  }, [canConfirm, content, isSubmitting, mode, onClose, ratio, resolution, router, shotStyle, title])
+  }, [briefStoryId, canConfirm, content, isSubmitting, mode, onClose, ratio, resolution, router, shotStyle, title])
 
   if (!open) return null
 
