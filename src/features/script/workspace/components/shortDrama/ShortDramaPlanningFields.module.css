@@ -1,0 +1,245 @@
+.section {
+  border-radius: 14px;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.sectionBody {
+  margin-top: 10px;
+  display: grid;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.readonly {
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.78);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.input {
+  width: 100%;
+  border-radius: 12px;
+  padding: 10px 10px;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  outline: none;
+}
+
+.textarea {
+  width: 100%;
+  border-radius: 12px;
+  padding: 10px 10px;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  outline: none;
+  resize: vertical;
+  min-height: 64px;
+}
+
+.rangeField {
+  display: grid;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.rangeTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rangeLabel {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rangeMid {
+  min-width: 0;
+}
+
+.ticks {
+  margin-top: 8px;
+  position: relative;
+  height: 14px;
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+.rangeRight {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.valueControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.miniBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(109, 94, 247, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.miniBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.valueInput {
+  width: 64px;
+  border-radius: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(109, 94, 247, 0.18);
+  background: rgba(109, 94, 247, 0.10);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 900;
+  outline: none;
+  text-align: center;
+}
+
+.valuePill {
+  min-width: 64px;
+  border-radius: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(109, 94, 247, 0.18);
+  background: rgba(109, 94, 247, 0.10);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.valueUnit {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.68);
+  white-space: nowrap;
+}
+
+.durationControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.durationSep {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.46);
+  padding: 0 2px;
+  user-select: none;
+}
+
+.durationSliders {
+  display: grid;
+  gap: 8px;
+}
+
+.durationRow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.durationRowLabel {
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.range {
+  width: 100%;
+  appearance: none;
+  height: 3px;
+  border-radius: 999px;
+  outline: none;
+}
+
+.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+  cursor: pointer;
+}
+
+.range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+  cursor: pointer;
+}
+
+.input:focus,
+.textarea:focus,
+.valueInput:focus {
+  border-color: rgba(109, 94, 247, 0.32);
+  box-shadow: 0 0 0 3px rgba(109, 94, 247, 0.14);
+}
+
+@media (max-width: 640px) {
+  .rangeRight {
+    justify-content: flex-start;
+  }
+}

@@ -1,55 +1,69 @@
-export function cloneJson<T>(value: T): T {
+export function cloneJson<T>(input: T): T {
   try {
-    return JSON.parse(JSON.stringify(value)) as T
+    return JSON.parse(JSON.stringify(input)) as T
   } catch {
-    return value
+    return input
   }
 }
 
-export function unwrapPlanningResult(input: any): { wrapper: "wrapped" | "plain"; original: any; inner: any } {
-  const original = input ?? null
-  if (original && typeof original === "object" && "planning_result" in original) {
-    const inner = (original as any).planning_result ?? null
-    return { wrapper: "wrapped", original, inner }
+export function toText(value: unknown): string {
+  if (value == null) return ""
+  if (typeof value === "string") return value
+  if (typeof value === "number" && Number.isFinite(value)) return String(value)
+  if (typeof value === "boolean") return value ? "true" : "false"
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
   }
-  return { wrapper: "plain", original, inner: original }
 }
 
-export function unwrapWorldSetting(input: any): { wrapper: "wrapped" | "plain"; original: any; inner: any } {
-  const original = input ?? null
-  if (original && typeof original === "object" && "world_setting" in original) {
-    const inner = (original as any).world_setting ?? null
-    return { wrapper: "wrapped", original, inner }
+export function sanitizeGenres(input: unknown, max = 50): string[] {
+  const list = Array.isArray(input) ? input : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (let i = 0; i < list.length && out.length < max; i += 1) {
+    const s = String(list[i] ?? "").trim()
+    if (!s) continue
+    if (seen.has(s)) continue
+    seen.add(s)
+    out.push(s)
   }
-  return { wrapper: "plain", original, inner: original }
+  return out
 }
 
-export function unwrapCharacterSettings(input: any): { wrapper: "wrapped" | "plain"; original: any; inner: any } {
-  const original = input ?? null
-  if (original && typeof original === "object" && "character_settings" in original) {
-    const inner = (original as any).character_settings ?? null
-    return { wrapper: "wrapped", original, inner }
+type UnwrapResult = {
+  wrapper: "wrapped" | "plain"
+  inner: any
+  original: any
+}
+
+export function unwrapPlanningResult(value: unknown): UnwrapResult {
+  const v = value as any
+  if (v && typeof v === "object" && "planning_result" in v && (v as any).planning_result && typeof (v as any).planning_result === "object") {
+    return { wrapper: "wrapped", inner: (v as any).planning_result, original: v }
   }
-  return { wrapper: "plain", original, inner: original }
+  return { wrapper: "plain", inner: v ?? {}, original: null }
 }
 
-export function toText(v: unknown): string {
-  if (typeof v === "string") return v
-  if (v == null) return ""
-  return String(v)
-}
-
-export function toNum(v: unknown): number | "" {
-  if (typeof v === "number" && Number.isFinite(v)) return v
-  if (typeof v === "string" && v.trim()) {
-    const n = Number(v)
-    if (Number.isFinite(n)) return n
+export function unwrapWorldSetting(value: unknown): UnwrapResult {
+  const v = value as any
+  if (v && typeof v === "object" && "world_setting" in v && (v as any).world_setting && typeof (v as any).world_setting === "object") {
+    return { wrapper: "wrapped", inner: (v as any).world_setting, original: v }
   }
-  return ""
+  return { wrapper: "plain", inner: v ?? {}, original: null }
 }
 
-export function sanitizeGenres(raw: unknown): string[] {
-  const list = Array.isArray(raw) ? raw : []
-  const cleaned = list.map((it) => String(it ?? "").trim()).filter(Boolean)
-  return Array.from(new Set(cleaned)).slice(0, 50)
+export function unwrapCharacterSettings(value: unknown): UnwrapResult {
+  const v = value as any
+  if (
+    v &&
+    typeof v === "object" &&
+    "character_settings" in v &&
+    (v as any).character_settings &&
+    typeof (v as any).character_settings === "object"
+  ) {
+    return { wrapper: "wrapped", inner: (v as any).character_settings, original: v }
+  }
+  return { wrapper: "plain", inner: v ?? {}, original: null }
 }

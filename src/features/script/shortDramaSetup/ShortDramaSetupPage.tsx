@@ -21,7 +21,6 @@ type ShortDramaSetupPageProps = Readonly<{
 
 function isShortDramaReady(shortDrama: any): boolean {
   if (!shortDrama || typeof shortDrama !== "object") return false
-  if (typeof (shortDrama as any).planningConfirmedAt !== "number") return false
   if (!(shortDrama as any).planningResult) return false
   if (!(shortDrama as any).worldSetting) return false
   if (!(shortDrama as any).characterSetting) return false
@@ -36,7 +35,11 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, hasOutlines: hasOu
   const [shortDrama, setShortDrama] = useState<any>(() => (storyMetadata as any)?.shortDrama ?? {})
   const ready = useMemo(() => isShortDramaReady(shortDrama), [shortDrama])
   const planningOk = Boolean(shortDrama && typeof shortDrama === "object" && (shortDrama as any).planningResult)
-  const confirmed = Boolean(shortDrama && typeof shortDrama === "object" && typeof (shortDrama as any).planningConfirmedAt === "number")
+  const confirmed = Boolean(
+    shortDrama &&
+      typeof shortDrama === "object" &&
+      (typeof (shortDrama as any).planningConfirmedAt === "number" || isShortDramaReady(shortDrama))
+  )
   const worldOk = Boolean(confirmed && shortDrama && typeof shortDrama === "object" && (shortDrama as any).worldSetting)
   const characterOk = Boolean(confirmed && shortDrama && typeof shortDrama === "object" && (shortDrama as any).characterSetting)
   const [generating, setGenerating] = useState(false)

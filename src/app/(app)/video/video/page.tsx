@@ -11,7 +11,6 @@ export const dynamic = "force-dynamic"
 function isShortDramaReady(metadata: Record<string, unknown>): boolean {
   const shortDrama = (metadata as any)?.shortDrama
   if (!shortDrama || typeof shortDrama !== "object") return false
-  if (typeof (shortDrama as any).planningConfirmedAt !== "number") return false
   if (!(shortDrama as any).planningResult) return false
   if (!(shortDrama as any).worldSetting) return false
   if (!(shortDrama as any).characterSetting) return false

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import styles from "./ShortDramaPlanningCard.module.css"
 import { callShortDramaCharacterSettings, callShortDramaWorldSetting, patchStoryShortDramaMetadata } from "../../api/shortDrama"
-import { Section, TextField, SmallField, RangeField } from "./ShortDramaPlanningFields"
+import { DurationRangeField, RangeField, Section, SmallField, TextField } from "./ShortDramaPlanningFields"
 import { cloneJson, sanitizeGenres, toText, unwrapPlanningResult } from "./shortDramaPlanningModel"
 
 type ShortDramaPlanningCardProps = Readonly<{
@@ -25,6 +25,7 @@ export function ShortDramaPlanningCard({
   onSaved,
   onShortDramaUpdate
 }: ShortDramaPlanningCardProps) {
+  const hasGeneratedSettings = Boolean(worldSetting && characterSetting)
   const normalized = useMemo(() => unwrapPlanningResult(planningResult), [planningResult])
   const [draft, setDraft] = useState<any>(() => {
     const inner = normalized.inner && typeof normalized.inner === "object" ? normalized.inner : {}
@@ -267,7 +268,7 @@ export function ShortDramaPlanningCard({
                 onClick={onConfirmAndGenerate}
                 disabled={generating || saving || !planningResult}
               >
-                {generating ? "生成中…" : planningConfirmedAt ? "重新生成设定" : "确认策划并生成设定"}
+                {generating ? "生成中…" : planningConfirmedAt || hasGeneratedSettings ? "重新生成设定" : "确认策划并生成设定"}
               </button>
               <button type="button" className={styles.primaryBtn} onClick={onEditClick} disabled={generating || saving}>
                 编辑
@@ -398,30 +399,15 @@ export function ShortDramaPlanningCard({
             step={50}
             onChange={(v) => updateParams({ word_limit_per_episode: clampInt(v, 200, 3000) })}
           />
-          <RangeField
-            label="单集时长最小"
+          <DurationRangeField
             unit={toText(duration?.unit) || "分钟"}
-            value={getInt(duration?.min, 3)}
+            minValue={getInt(duration?.min, 3)}
+            maxValue={getInt(duration?.max, 4)}
             editing={editing}
             min={1}
             max={10}
-            onChange={(v) => {
-              const nextMin = clampInt(v, 1, 10)
-              const nextMax = Math.max(nextMin, getInt(duration?.max, 4))
-              updateParams({ single_episode_duration: { ...duration, min: nextMin, max: nextMax, unit: toText(duration?.unit) || "分钟" } })
-            }}
-          />
-          <RangeField
-            label="单集时长最大"
-            unit={toText(duration?.unit) || "分钟"}
-            value={getInt(duration?.max, 4)}
-            editing={editing}
-            min={1}
-            max={10}
-            onChange={(v) => {
-              const nextMax = clampInt(v, 1, 10)
-              const nextMin = Math.min(nextMax, getInt(duration?.min, 3))
-              updateParams({ single_episode_duration: { ...duration, min: nextMin, max: nextMax, unit: toText(duration?.unit) || "分钟" } })
+            onChange={(next) => {
+              updateParams({ single_episode_duration: { ...duration, min: clampInt(next.min, 1, 10), max: clampInt(next.max, 1, 10), unit: toText(duration?.unit) || "分钟" } })
             }}
           />
         </div>

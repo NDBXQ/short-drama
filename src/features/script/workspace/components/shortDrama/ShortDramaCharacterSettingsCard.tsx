@@ -74,7 +74,7 @@ export function ShortDramaCharacterSettingsCard({
   const [errorText, setErrorText] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const isLocked = typeof planningConfirmedAt !== "number" || !planningResult
+  const isLocked = !planningResult || (typeof planningConfirmedAt !== "number" && !characterSetting)
   const characters = getCharacters(draft)
   const active = characters[activeIndex] ?? null
 

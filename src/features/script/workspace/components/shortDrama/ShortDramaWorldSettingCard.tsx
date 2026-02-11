@@ -40,7 +40,7 @@ export function ShortDramaWorldSettingCard({
   const [saving, setSaving] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
 
-  const isLocked = typeof planningConfirmedAt !== "number" || !planningResult
+  const isLocked = !planningResult || (typeof planningConfirmedAt !== "number" && !worldSetting)
 
   useEffect(() => {
     if (editing || saving) return

@@ -20,7 +20,7 @@ export function ShortDramaPanel({ storyId, shortDrama, onShortDramaUpdate }: Sho
   const worldSetting = shortDramaObj?.worldSetting ?? null
   const characterSetting = shortDramaObj?.characterSetting ?? null
   const planningConfirmedAt = typeof shortDramaObj?.planningConfirmedAt === "number" ? shortDramaObj.planningConfirmedAt : null
-  const confirmed = typeof planningConfirmedAt === "number"
+  const confirmed = Boolean(typeof planningConfirmedAt === "number" || (planningResult && worldSetting && characterSetting))
   const worldVisible = confirmed ? worldSetting : null
   const characterVisible = confirmed ? characterSetting : null
   const [active, setActive] = useState<StepKey>("planning")
@@ -35,7 +35,7 @@ export function ShortDramaPanel({ storyId, shortDrama, onShortDramaUpdate }: Sho
         title: "剧本策划",
         desc: "前置条件",
         ok: hasPlanning,
-        badge: hasPlanning ? (planningConfirmedAt ? "已确认" : "未确认") : "未生成"
+        badge: hasPlanning ? (confirmed ? "已确认" : "未确认") : "未生成"
       },
       {
         key: "world" as const,
@@ -52,7 +52,7 @@ export function ShortDramaPanel({ storyId, shortDrama, onShortDramaUpdate }: Sho
         badge: !confirmed ? "待确认" : hasCharacter ? "已生成" : "未生成"
       }
     ]
-  }, [characterSetting, confirmed, planningConfirmedAt, planningResult, worldSetting])
+  }, [characterSetting, confirmed, planningResult, worldSetting])
 
   return (
     <div className={styles.root} aria-label="短剧信息">
