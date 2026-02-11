@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import styles from "./PreviewPanel.module.css"
 import type { RewriteState, OutlineItem } from "../utils"
@@ -38,6 +38,11 @@ export function PreviewPanel({
   storyId
 }: PreviewPanelProps) {
   const router = useRouter()
+  const activeSequence = activeOutline?.sequence ?? null
+  const [summaryOpenSequence, setSummaryOpenSequence] = useState<number | null>(null)
+  const summaryOpen = summaryOpenSequence !== null && summaryOpenSequence === activeSequence
+  const normalizeLine = useCallback((line: string) => line.replace(/[\u200B-\u200D\uFEFF]/g, "").trim(), [])
+
   const openShortDrama = useCallback(() => {
     const next = (() => {
       try {
@@ -49,6 +54,43 @@ export function PreviewPanel({
     const qs = next ? `?next=${encodeURIComponent(next)}` : ""
     router.push(`/script/short-drama/${encodeURIComponent(storyId)}${qs}`)
   }, [router, storyId])
+
+  const parsedOriginal = useMemo(() => {
+    const originalText = activeOutline?.originalText ?? ""
+    if (!originalText.trim()) return { summary: null as null | Record<string, string>, episodeText: "" }
+    const lines = originalText.replaceAll("\r\n", "\n").split("\n").map(normalizeLine)
+    const isEpisodeLine = (l: string) => /^第\s*\d+\s*集/u.test(l)
+    const headerKey = (l: string) => /^(剧名|主题|核心冲突|阶段|阶段目标)[:：]/u.test(l)
+    const startIdx = lines.findIndex((l) => isEpisodeLine(l))
+    const headerLines = startIdx >= 0 ? lines.slice(0, startIdx).filter(Boolean) : lines.filter(headerKey)
+    const episodeLines =
+      startIdx >= 0 ? lines.slice(startIdx + 1).filter(Boolean) : lines.filter((l) => !headerKey(l)).filter(Boolean)
+
+    const pick = (key: string) => {
+      const line = headerLines.find((l) => l.startsWith(`${key}：`) || l.startsWith(`${key}:`))
+      if (!line) return ""
+      return line.replace(/^.*[:：]\s*/u, "").trim()
+    }
+
+    const scriptName = pick("剧名")
+    const theme = pick("主题")
+    const conflict = pick("核心冲突")
+    const stage = pick("阶段")
+    const stageGoal = pick("阶段目标")
+
+    const summary = (() => {
+      const obj: Record<string, string> = {}
+      if (scriptName) obj.scriptName = scriptName
+      if (theme) obj.theme = theme
+      if (conflict) obj.conflict = conflict
+      if (stage) obj.stage = stage
+      if (stageGoal) obj.stageGoal = stageGoal
+      return Object.keys(obj).length ? obj : null
+    })()
+
+    const episodeText = episodeLines.join("\n").trim()
+    return { summary, episodeText }
+  }, [activeOutline?.originalText, normalizeLine])
 
   return (
     <section className={styles.preview}>
@@ -86,6 +128,64 @@ export function PreviewPanel({
       </div>
 
       <article className={styles.markdown}>
+        {parsedOriginal.summary ? (
+          <section className={styles.storySummary} aria-label="故事摘要">
+            <button
+              type="button"
+              className={styles.storySummaryHeader}
+              onClick={() => setSummaryOpenSequence((prev) => (prev === activeSequence ? null : activeSequence))}
+            >
+              <div className={styles.storySummaryTitleRow}>
+                <div className={styles.storySummaryTitle}>故事摘要</div>
+                <div className={styles.storySummaryToggle}>{summaryOpen ? "收起" : "展开"}</div>
+              </div>
+              <div className={styles.storySummaryHint}>
+                {parsedOriginal.summary.stage
+                  ? parsedOriginal.summary.stage
+                  : parsedOriginal.summary.scriptName
+                  ? parsedOriginal.summary.scriptName
+                  : "查看阶段 / 阶段目标"}
+              </div>
+              {!summaryOpen && parsedOriginal.summary.stageGoal ? (
+                <div className={styles.storySummaryHintSecondary}>目标：{parsedOriginal.summary.stageGoal}</div>
+              ) : null}
+            </button>
+            {summaryOpen ? (
+              <div className={styles.storySummaryBody}>
+                {parsedOriginal.summary.scriptName ? (
+                  <div className={styles.summaryRow}>
+                    <div className={styles.summaryKey}>剧名</div>
+                    <div className={styles.summaryVal}>{parsedOriginal.summary.scriptName}</div>
+                  </div>
+                ) : null}
+                {parsedOriginal.summary.theme ? (
+                  <div className={styles.summaryRow}>
+                    <div className={styles.summaryKey}>主题</div>
+                    <div className={styles.summaryVal}>{parsedOriginal.summary.theme}</div>
+                  </div>
+                ) : null}
+                {parsedOriginal.summary.conflict ? (
+                  <div className={styles.summaryRow}>
+                    <div className={styles.summaryKey}>核心冲突</div>
+                    <div className={styles.summaryVal}>{parsedOriginal.summary.conflict}</div>
+                  </div>
+                ) : null}
+                {parsedOriginal.summary.stage ? (
+                  <div className={styles.summaryRow}>
+                    <div className={styles.summaryKey}>阶段</div>
+                    <div className={styles.summaryVal}>{parsedOriginal.summary.stage}</div>
+                  </div>
+                ) : null}
+                {parsedOriginal.summary.stageGoal ? (
+                  <div className={styles.summaryRow}>
+                    <div className={styles.summaryKey}>阶段目标</div>
+                    <div className={styles.summaryVal}>{parsedOriginal.summary.stageGoal}</div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
         {activeOutline ? (
           (() => {
             if (previewMode === "rewrite") {
@@ -99,7 +199,9 @@ export function PreviewPanel({
               const content = activeDraft?.content?.trim() || activeRewrite?.result?.new_content?.trim() || ""
               return content ? <div className={styles.streamText}>{content}</div> : <div className={styles.originalEmpty}>暂无改写内容</div>
             }
-            return <div className={styles.originalText}>{activeOutline.originalText}</div>
+            const baseText = (parsedOriginal.episodeText || activeOutline.originalText).replaceAll("\r\n", "\n")
+            const text = baseText.replace(/^第\s*\d+\s*集\s*\n?/u, "")
+            return <div className={styles.originalText}>{text}</div>
           })()
         ) : (
           <div className={styles.originalEmpty}>暂无可展示内容</div>

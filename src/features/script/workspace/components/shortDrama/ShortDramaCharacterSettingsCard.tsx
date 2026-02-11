@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import styles from "./ShortDramaCharacterSettingsCard.module.css"
 import { patchStoryShortDramaMetadata } from "../../api/shortDrama"
 import { Section, TextField, SmallField } from "./ShortDramaPlanningFields"
 import { cloneJson, toText, unwrapCharacterSettings } from "./shortDramaPlanningModel"
+import { useVideoImageEvents } from "@/features/video/hooks/useVideoAssetEvents"
 
 type ShortDramaCharacterSettingsCardProps = Readonly<{
   storyId: string
@@ -16,6 +17,18 @@ type ShortDramaCharacterSettingsCardProps = Readonly<{
 }>
 
 type CharacterItem = Record<string, unknown>
+type RoleImageItem = {
+  id: string
+  storyId: string
+  storyboardId: string | null
+  name: string
+  description: string | null
+  url: string
+  thumbnailUrl: string | null
+  category: string
+  prompt: string | null
+  createdAt: string
+}
 
 function buildCharacterSettingForSave(input: { normalized: ReturnType<typeof unwrapCharacterSettings>; inner: any }): any {
   if (input.normalized.wrapper === "wrapped" && input.normalized.original && typeof input.normalized.original === "object") {
@@ -73,10 +86,103 @@ export function ShortDramaCharacterSettingsCard({
   const [saving, setSaving] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [imagesLoading, setImagesLoading] = useState(false)
+  const [imagesError, setImagesError] = useState<string | null>(null)
+  const [roleImagesByName, setRoleImagesByName] = useState<Record<string, RoleImageItem>>({})
+  const [generatingAll, setGeneratingAll] = useState(false)
+  const [generatingCurrent, setGeneratingCurrent] = useState(false)
+  const refreshTimerRef = useRef<number | null>(null)
 
   const isLocked = !planningResult || (typeof planningConfirmedAt !== "number" && !characterSetting)
   const characters = getCharacters(draft)
   const active = characters[activeIndex] ?? null
+
+  const buildRoleImagePrompt = useCallback((ch: any, index: number): { name: string; prompt: string } | null => {
+    const pick = (v: unknown) => String(v ?? "").trim()
+    const shrink = (s: string, max = 800) => (s.length > max ? s.slice(0, max) : s)
+    const name = pick(ch?.character_name) || `角色${index + 1}`
+    if (/^旁白$/u.test(name) || /^narrator$/i.test(name)) return null
+
+    const type = pick(ch?.character_type)
+    const age = pick(ch?.age)
+    const occupation = pick(ch?.occupation)
+    const appearance = pick(ch?.appearance)
+    const physique = pick(ch?.physique)
+    const hairstyle = pick(ch?.hairstyle)
+    const clothing = pick(ch?.clothing)
+
+    const lines: string[] = []
+    lines.push("请生成一张写实影视剧角色设定图。")
+    lines.push(`角色姓名：${shrink(name, 60)}。`)
+    if (type) lines.push(`角色类型：${shrink(type, 60)}。`)
+    if (age) lines.push(`年龄：${shrink(age, 40)}。`)
+    if (occupation) lines.push(`职业：${shrink(occupation, 120)}。`)
+    if (appearance) lines.push(`相貌：${shrink(appearance)}。`)
+    if (physique) lines.push(`体格：${shrink(physique)}。`)
+    if (hairstyle) lines.push(`发型：${shrink(hairstyle)}。`)
+    if (clothing) lines.push(`服装：${shrink(clothing)}。`)
+    lines.push("要求：单人，人物主体清晰，构图干净，电影级光影，高清细节，背景简洁，不要文字、水印、logo，避免多人同框。")
+
+    return { name, prompt: lines.join("\n") }
+  }, [])
+
+  const fetchRoleImages = useCallback(async () => {
+    if (!storyId) return
+    setImagesLoading(true)
+    setImagesError(null)
+    try {
+      const u = new URL("/api/video-creation/images", window.location.origin)
+      u.searchParams.set("storyId", storyId)
+      u.searchParams.set("category", "role")
+      u.searchParams.set("includeGlobal", "true")
+      u.searchParams.set("limit", "200")
+      u.searchParams.set("offset", "0")
+      const res = await fetch(u.toString(), { method: "GET" })
+      const json = (await res.json().catch(() => null)) as any
+      if (!res.ok || !json || json.ok === false) {
+        throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
+      }
+      const items = Array.isArray(json?.data?.items) ? (json.data.items as RoleImageItem[]) : []
+      const latest: Record<string, RoleImageItem> = {}
+      for (const it of items) {
+        const n = String((it as any)?.name ?? "").trim()
+        if (!n) continue
+        if (latest[n]) continue
+        latest[n] = it
+      }
+      setRoleImagesByName(latest)
+    } catch (e) {
+      const anyErr = e as { message?: string }
+      setImagesError(anyErr?.message ?? "加载角色图片失败")
+    } finally {
+      setImagesLoading(false)
+    }
+  }, [storyId])
+
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current)
+    refreshTimerRef.current = window.setTimeout(() => {
+      refreshTimerRef.current = null
+      fetchRoleImages()
+    }, 600)
+  }, [fetchRoleImages])
+
+  useEffect(() => {
+    fetchRoleImages()
+    return () => {
+      if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current)
+    }
+  }, [fetchRoleImages])
+
+  useVideoImageEvents({
+    storyId,
+    includeGlobal: true,
+    enabled: Boolean(storyId),
+    onEvent: (ev) => {
+      if (ev.category !== "role") return
+      scheduleRefresh()
+    }
+  })
 
   useEffect(() => {
     if (editing || saving) return
@@ -157,6 +263,64 @@ export function ShortDramaCharacterSettingsCard({
     }
   }
 
+  const generateAllRoleImages = async (forceRegenerate: boolean) => {
+    if (isLocked || editing || saving) return
+    if (generatingAll) return
+    setGeneratingAll(true)
+    setImagesError(null)
+    try {
+      const prompts = characters
+        .map((c, idx) => buildRoleImagePrompt(c, idx))
+        .filter(Boolean)
+        .slice(0, 50) as Array<{ name: string; prompt: string }>
+      if (prompts.length === 0) return
+      const res = await fetch("/api/video-creation/images/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          storyId,
+          async: true,
+          forceRegenerate,
+          prompts: prompts.map((p) => ({ name: p.name, prompt: p.prompt, category: "role" }))
+        })
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    } catch (e) {
+      const anyErr = e as { message?: string }
+      setImagesError(anyErr?.message ?? "生成角色图片失败")
+    } finally {
+      setGeneratingAll(false)
+    }
+  }
+
+  const generateCurrentRoleImage = async (forceRegenerate: boolean) => {
+    if (isLocked || editing || saving) return
+    if (generatingCurrent) return
+    if (!active) return
+    setGeneratingCurrent(true)
+    setImagesError(null)
+    try {
+      const prompt = buildRoleImagePrompt(active, activeIndex)
+      if (!prompt) return
+      const res = await fetch("/api/video-creation/images/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          storyId,
+          async: true,
+          forceRegenerate,
+          prompts: [{ name: prompt.name, prompt: prompt.prompt, category: "role" }]
+        })
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    } catch (e) {
+      const anyErr = e as { message?: string }
+      setImagesError(anyErr?.message ?? "生成角色图片失败")
+    } finally {
+      setGeneratingCurrent(false)
+    }
+  }
+
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -183,6 +347,7 @@ export function ShortDramaCharacterSettingsCard({
       </div>
 
       {errorText ? <div className={styles.error}>{errorText}</div> : null}
+      {imagesError ? <div className={styles.error}>{imagesError}</div> : null}
 
       <div className={styles.characterBar} aria-label="角色列表">
         <div className={styles.characterTabs}>
@@ -213,11 +378,96 @@ export function ShortDramaCharacterSettingsCard({
               删除当前
             </button>
           </div>
-        ) : null}
+        ) : (
+          <div className={styles.characterActions}>
+            <button
+              type="button"
+              className={styles.secondaryBtn}
+              onClick={() => generateAllRoleImages(false)}
+              disabled={isLocked || saving || generatingAll || generatingCurrent || characters.length === 0}
+            >
+              {generatingAll ? "生成中…" : "生成全部角色图"}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryBtn}
+              onClick={() => generateAllRoleImages(true)}
+              disabled={isLocked || saving || generatingAll || generatingCurrent || characters.length === 0}
+            >
+              重新生成全部
+            </button>
+          </div>
+        )}
       </div>
 
       {active ? (
         <div className={styles.grid}>
+          <Section title="角色形象">
+            <div className={styles.imagePanel}>
+              {(() => {
+                const name = toText((active as any)?.character_name).trim() || `角色${activeIndex + 1}`
+                const img = roleImagesByName[name]
+                const src = img?.thumbnailUrl || img?.url || ""
+                if (!src) return <div className={styles.imagePlaceholder}>{imagesLoading ? "加载中…" : "暂无角色图"}</div>
+                return (
+                  <button
+                    type="button"
+                    className={styles.imageThumb}
+                    onClick={() => window.open(img.url, "_blank", "noopener,noreferrer")}
+                  >
+                    <img src={src} alt={name} />
+                  </button>
+                )
+              })()}
+              <div className={styles.imageMeta}>
+                <div className={styles.imageMetaTitle}>当前角色图</div>
+                  <div className={styles.imageMetaDesc}>基于外形字段生成</div>
+                <div className={styles.imageActions}>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={() => generateCurrentRoleImage(false)}
+                    disabled={isLocked || saving || generatingAll || generatingCurrent}
+                  >
+                    {generatingCurrent ? "生成中…" : "生成当前"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={() => generateCurrentRoleImage(true)}
+                    disabled={isLocked || saving || generatingAll || generatingCurrent}
+                  >
+                    重新生成当前
+                  </button>
+                  <button type="button" className={styles.secondaryBtn} onClick={fetchRoleImages} disabled={imagesLoading}>
+                    刷新
+                  </button>
+                </div>
+              </div>
+            </div>
+            {characters.length ? (
+              <div className={styles.imageGrid} aria-label="角色图集">
+                {characters.map((c, idx) => {
+                  const name = toText((c as any)?.character_name).trim() || `角色${idx + 1}`
+                  const img = roleImagesByName[name]
+                  const src = img?.thumbnailUrl || img?.url || ""
+                  return (
+                    <button
+                      key={`${name}_${idx}`}
+                      type="button"
+                      className={styles.imageCard}
+                      onClick={() => (img?.url ? window.open(img.url, "_blank", "noopener,noreferrer") : null)}
+                      disabled={!img?.url}
+                    >
+                      <div className={styles.imageCardName}>{name}</div>
+                      {src ? <img className={styles.imageCardImg} src={src} alt={name} /> : <div className={styles.imageCardEmpty}>未生成</div>}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
+          </Section>
+
           <Section title="基础信息">
             <div className={styles.kvGrid}>
               <SmallField
