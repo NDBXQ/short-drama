@@ -20,12 +20,15 @@ export function ShortDramaPanel({ storyId, shortDrama, onShortDramaUpdate }: Sho
   const worldSetting = shortDramaObj?.worldSetting ?? null
   const characterSetting = shortDramaObj?.characterSetting ?? null
   const planningConfirmedAt = typeof shortDramaObj?.planningConfirmedAt === "number" ? shortDramaObj.planningConfirmedAt : null
+  const confirmed = typeof planningConfirmedAt === "number"
+  const worldVisible = confirmed ? worldSetting : null
+  const characterVisible = confirmed ? characterSetting : null
   const [active, setActive] = useState<StepKey>("planning")
 
   const steps = useMemo(() => {
     const hasPlanning = Boolean(planningResult)
-    const hasWorld = Boolean(worldSetting)
-    const hasCharacter = Boolean(characterSetting)
+    const hasWorld = confirmed && Boolean(worldSetting)
+    const hasCharacter = confirmed && Boolean(characterSetting)
     return [
       {
         key: "planning" as const,
@@ -34,10 +37,22 @@ export function ShortDramaPanel({ storyId, shortDrama, onShortDramaUpdate }: Sho
         ok: hasPlanning,
         badge: hasPlanning ? (planningConfirmedAt ? "已确认" : "未确认") : "未生成"
       },
-      { key: "world" as const, title: "世界观设定", desc: "基于策划并行", ok: hasWorld },
-      { key: "character" as const, title: "角色设定", desc: "基于策划并行", ok: hasCharacter }
+      {
+        key: "world" as const,
+        title: "世界观设定",
+        desc: "基于策划并行",
+        ok: hasWorld,
+        badge: !confirmed ? "待确认" : hasWorld ? "已生成" : "未生成"
+      },
+      {
+        key: "character" as const,
+        title: "角色设定",
+        desc: "基于策划并行",
+        ok: hasCharacter,
+        badge: !confirmed ? "待确认" : hasCharacter ? "已生成" : "未生成"
+      }
     ]
-  }, [characterSetting, planningConfirmedAt, planningResult, worldSetting])
+  }, [characterSetting, confirmed, planningConfirmedAt, planningResult, worldSetting])
 
   return (
     <div className={styles.root} aria-label="短剧信息">
@@ -51,11 +66,7 @@ export function ShortDramaPanel({ storyId, shortDrama, onShortDramaUpdate }: Sho
           >
             <div className={styles.navRow}>
               <div className={styles.navTitle}>{s.title}</div>
-              {"badge" in s ? (
-                <div className={s.badge === "已确认" ? styles.badgeOk : styles.badgeMuted}>{String((s as any).badge)}</div>
-              ) : (
-                <div className={s.ok ? styles.badgeOk : styles.badgeMuted}>{s.ok ? "已生成" : "未生成"}</div>
-              )}
+              <div className={s.badge === "已确认" || s.badge === "已生成" ? styles.badgeOk : styles.badgeMuted}>{s.badge}</div>
             </div>
             <div className={styles.navDesc}>{s.desc}</div>
           </button>
@@ -70,14 +81,22 @@ export function ShortDramaPanel({ storyId, shortDrama, onShortDramaUpdate }: Sho
             worldSetting={worldSetting}
             characterSetting={characterSetting}
             planningConfirmedAt={planningConfirmedAt ?? undefined}
-            onSaved={(nextPlanningResult) => onShortDramaUpdate?.({ ...shortDramaObj, planningResult: nextPlanningResult })}
+            onSaved={(nextPlanningResult) =>
+              onShortDramaUpdate?.({
+                ...shortDramaObj,
+                planningResult: nextPlanningResult,
+                worldSetting: null,
+                characterSetting: null
+              })
+            }
             onShortDramaUpdate={onShortDramaUpdate}
           />
         ) : active === "world" ? (
           <ShortDramaWorldSettingCard
             storyId={storyId}
             planningResult={planningResult}
-            worldSetting={worldSetting}
+            planningConfirmedAt={planningConfirmedAt ?? undefined}
+            worldSetting={worldVisible}
             characterSetting={characterSetting}
             onSaved={(nextWorldSetting) => onShortDramaUpdate?.({ ...shortDramaObj, worldSetting: nextWorldSetting })}
           />
@@ -85,8 +104,9 @@ export function ShortDramaPanel({ storyId, shortDrama, onShortDramaUpdate }: Sho
           <ShortDramaCharacterSettingsCard
             storyId={storyId}
             planningResult={planningResult}
-            worldSetting={worldSetting}
-            characterSetting={characterSetting}
+            planningConfirmedAt={planningConfirmedAt ?? undefined}
+            worldSetting={worldVisible}
+            characterSetting={characterVisible}
             onSaved={(nextCharacterSetting) => onShortDramaUpdate?.({ ...shortDramaObj, characterSetting: nextCharacterSetting })}
           />
         )}

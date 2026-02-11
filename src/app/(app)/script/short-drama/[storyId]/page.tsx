@@ -19,11 +19,31 @@ export default async function Page({
   if (!storyId) notFound()
 
   const db = await getDb({ stories })
-  const [row] = await db.select({ metadata: stories.metadata }).from(stories).where(eq(stories.id, storyId)).limit(1)
+  const [row] = await db
+    .select({
+      metadata: stories.metadata,
+      title: stories.title,
+      aspectRatio: stories.aspectRatio,
+      resolution: stories.resolution,
+      shotStyle: stories.shotStyle
+    })
+    .from(stories)
+    .where(eq(stories.id, storyId))
+    .limit(1)
   if (!row) notFound()
 
   const metadata = (row.metadata ?? {}) as Record<string, unknown>
   await Promise.resolve(searchParams)
-  return <ShortDramaSetupPage storyId={storyId} storyMetadata={metadata} />
+  return (
+    <ShortDramaSetupPage
+      storyId={storyId}
+      storyMetadata={metadata}
+      storyConfig={{
+        title: row.title ?? "",
+        ratio: row.aspectRatio ?? "16:9",
+        resolution: row.resolution ?? "1080p",
+        style: row.shotStyle ?? "realistic"
+      }}
+    />
+  )
 }
-

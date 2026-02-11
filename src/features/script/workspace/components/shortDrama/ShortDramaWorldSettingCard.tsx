@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import styles from "./ShortDramaWorldSettingCard.module.css"
 import { patchStoryShortDramaMetadata } from "../../api/shortDrama"
 import { Section, TextField } from "./ShortDramaPlanningFields"
@@ -9,6 +9,7 @@ import { cloneJson, toText, unwrapWorldSetting } from "./shortDramaPlanningModel
 type ShortDramaWorldSettingCardProps = Readonly<{
   storyId: string
   planningResult: any
+  planningConfirmedAt?: number
   worldSetting: any
   characterSetting: any
   onSaved?: (nextWorldSetting: any) => void
@@ -24,6 +25,7 @@ function buildWorldSettingForSave(input: { normalized: ReturnType<typeof unwrapW
 export function ShortDramaWorldSettingCard({
   storyId,
   planningResult,
+  planningConfirmedAt,
   worldSetting,
   characterSetting,
   onSaved
@@ -38,7 +40,14 @@ export function ShortDramaWorldSettingCard({
   const [saving, setSaving] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
 
-  const hasPlanning = Boolean(planningResult)
+  const isLocked = typeof planningConfirmedAt !== "number" || !planningResult
+
+  useEffect(() => {
+    if (editing || saving) return
+    const inner = normalized.inner && typeof normalized.inner === "object" ? cloneJson(normalized.inner) : {}
+    setDraft(inner)
+    setSnapshot(cloneJson(inner))
+  }, [editing, normalized.inner, saving])
 
   const update = (patch: Record<string, unknown>) => {
     setDraft((prev: any) => {
@@ -48,6 +57,7 @@ export function ShortDramaWorldSettingCard({
   }
 
   const onEditClick = () => {
+    if (isLocked) return
     setSnapshot(cloneJson(draft))
     setErrorText(null)
     setEditing(true)
@@ -69,7 +79,8 @@ export function ShortDramaWorldSettingCard({
       await patchStoryShortDramaMetadata(storyId, {
         planningResult,
         worldSetting: nextWorldSetting,
-        characterSetting
+        characterSetting,
+        planningConfirmedAt
       })
       setSnapshot(cloneJson(inner))
       setEditing(false)
@@ -87,7 +98,7 @@ export function ShortDramaWorldSettingCard({
       <div className={styles.header}>
         <div className={styles.headerMain}>
           <div className={styles.title}>世界观设定</div>
-          <div className={styles.subTitle}>{hasPlanning ? "可基于策划内容调整" : "缺少策划结果，仍可手动编辑"}</div>
+          <div className={styles.subTitle}>{isLocked ? "请先在剧本策划中确认并生成设定" : "可基于策划内容调整"}</div>
         </div>
         <div className={styles.headerActions}>
           {editing ? (
@@ -100,7 +111,7 @@ export function ShortDramaWorldSettingCard({
               </button>
             </>
           ) : (
-            <button type="button" className={styles.primaryBtn} onClick={onEditClick}>
+            <button type="button" className={styles.primaryBtn} onClick={onEditClick} disabled={isLocked}>
               编辑
             </button>
           )}
@@ -132,4 +143,3 @@ export function ShortDramaWorldSettingCard({
     </div>
   )
 }
-

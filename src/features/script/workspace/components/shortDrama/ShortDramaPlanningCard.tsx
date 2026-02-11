@@ -156,7 +156,7 @@ export function ShortDramaPlanningCard({
     try {
       const sanitizedInner = sanitizeDraftInner()
       const nextPlanningResult = buildPlanningResultForSave(sanitizedInner)
-      await patchStoryShortDramaMetadata(storyId, { planningResult: nextPlanningResult, worldSetting, characterSetting })
+      await patchStoryShortDramaMetadata(storyId, { planningResult: nextPlanningResult, worldSetting: null, characterSetting: null })
       setSnapshot(cloneJson(sanitizedInner))
       setEditing(false)
       setGenreDraft("")
