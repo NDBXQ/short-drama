@@ -79,7 +79,7 @@ export function PreviewPanel({
             className={styles.toggleButton}
             onClick={openShortDrama}
           >
-            短剧信息
+            前置：短剧信息
           </button>
           <div className={styles.previewHint}>可在此查看生成内容</div>
         </div>

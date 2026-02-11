@@ -10,6 +10,7 @@ import { buildOutlineStoryTextFromShortDrama } from "../workspace/api/shortDrama
 type ShortDramaSetupPageProps = Readonly<{
   storyId: string
   storyMetadata?: Record<string, unknown>
+  hasOutlines?: boolean
   storyConfig: {
     title: string
     ratio: string
@@ -27,7 +28,7 @@ function isShortDramaReady(shortDrama: any): boolean {
   return true
 }
 
-export function ShortDramaSetupPage({ storyId, storyMetadata, storyConfig }: ShortDramaSetupPageProps) {
+export function ShortDramaSetupPage({ storyId, storyMetadata, hasOutlines: hasOutlinesProp, storyConfig }: ShortDramaSetupPageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get("next") || ""
@@ -40,6 +41,7 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, storyConfig }: Sho
   const characterOk = Boolean(confirmed && shortDrama && typeof shortDrama === "object" && (shortDrama as any).characterSetting)
   const [generating, setGenerating] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
+  const [hasOutlines, setHasOutlines] = useState(Boolean(hasOutlinesProp))
 
   const continueUrl = (() => {
     if (next && next.startsWith("/")) return next
@@ -48,6 +50,10 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, storyConfig }: Sho
 
   const onContinue = async () => {
     if (!ready || generating) return
+    if (hasOutlines) {
+      router.push(continueUrl)
+      return
+    }
     setGenerating(true)
     setErrorText(null)
     try {
@@ -76,6 +82,47 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, storyConfig }: Sho
         setErrorText(errJson?.error?.message ?? "生成大纲失败，请稍后重试")
         return
       }
+      setHasOutlines(true)
+      router.push(continueUrl)
+    } catch (e) {
+      const anyErr = e as { message?: string }
+      setErrorText(anyErr?.message ?? "网络异常，请稍后重试")
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const onRegenerateOutline = async () => {
+    if (!ready || generating) return
+    setGenerating(true)
+    setErrorText(null)
+    try {
+      const story_text = buildOutlineStoryTextFromShortDrama({
+        planningResult: (shortDrama as any).planningResult,
+        worldSetting: (shortDrama as any).worldSetting,
+        characterSetting: (shortDrama as any).characterSetting,
+        maxBytes: 49_000
+      })
+      const res = await fetch("/api/coze/storyboard/generate-outline", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          storyId,
+          input_type: "brief",
+          story_text,
+          title: storyConfig.title,
+          ratio: storyConfig.ratio,
+          resolution: storyConfig.resolution,
+          style: storyConfig.style
+        })
+      })
+      const json = (await res.json().catch(() => null)) as ApiOk<unknown> | ApiErr | null
+      if (!res.ok || !json || (json as ApiErr).ok === false) {
+        const errJson = (json as ApiErr | null) ?? null
+        setErrorText(errJson?.error?.message ?? "重新生成大纲失败，请稍后重试")
+        return
+      }
+      setHasOutlines(true)
       router.push(continueUrl)
     } catch (e) {
       const anyErr = e as { message?: string }
@@ -87,20 +134,10 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, storyConfig }: Sho
 
   return (
     <main className={styles.container}>
-      <section className={styles.header} aria-label="短剧信息设置">
-        <div className={styles.headerMain}>
-          <div className={styles.title}>短剧信息</div>
-          <div className={styles.subTitle}>
-            完成剧本策划确认后，再并行生成世界观与角色设定。全部完成后进入下一步（剧本大纲 / 分镜 / 生图 / 生视频）。
-          </div>
-          {errorText ? <div className={styles.error}>{errorText}</div> : null}
-        </div>
-      </section>
-
       <section className={styles.layout} aria-label="短剧信息布局">
         <aside className={styles.rail} aria-label="创作流程">
           <div className={styles.card}>
-            <div className={styles.cardTitle}>创作流程</div>
+            <div className={styles.cardTitle}>短剧信息</div>
             <div className={styles.flowList}>
               <div className={styles.flowItem}>
                 <div className={styles.flowName}>短剧信息</div>
@@ -178,6 +215,7 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, storyConfig }: Sho
           <div className={styles.card}>
             <div className={styles.cardTitle}>操作</div>
             <div className={styles.actionStack}>
+              {errorText ? <div className={styles.error}>{errorText}</div> : null}
               <button
                 type="button"
                 className={styles.secondaryBtn}
@@ -185,8 +223,11 @@ export function ShortDramaSetupPage({ storyId, storyMetadata, storyConfig }: Sho
               >
                 返回工作台
               </button>
+              <button type="button" className={styles.secondaryBtn} disabled={!ready || generating || !hasOutlines} onClick={onRegenerateOutline}>
+                重新生成大纲
+              </button>
               <button type="button" className={styles.primaryBtn} disabled={!ready || generating} onClick={onContinue}>
-                {generating ? "生成中…" : "继续下一步"}
+                {generating ? "生成中…" : hasOutlines ? "进入大纲" : "继续下一步"}
               </button>
             </div>
           </div>

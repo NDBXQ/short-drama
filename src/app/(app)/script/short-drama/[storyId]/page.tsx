@@ -2,7 +2,7 @@ import type { ReactElement } from "react"
 import { notFound } from "next/navigation"
 import { eq } from "drizzle-orm"
 import { getDb } from "coze-coding-dev-sdk"
-import { stories } from "@/shared/schema"
+import { stories, storyOutlines } from "@/shared/schema"
 import { ShortDramaSetupPage } from "@/features/script/shortDramaSetup/ShortDramaSetupPage"
 
 export const dynamic = "force-dynamic"
@@ -18,7 +18,7 @@ export default async function Page({
   const storyId = resolvedParams.storyId?.trim()
   if (!storyId) notFound()
 
-  const db = await getDb({ stories })
+  const db = await getDb({ stories, storyOutlines })
   const [row] = await db
     .select({
       metadata: stories.metadata,
@@ -32,12 +32,16 @@ export default async function Page({
     .limit(1)
   if (!row) notFound()
 
+  const outlineRows = await db.select({ id: storyOutlines.id }).from(storyOutlines).where(eq(storyOutlines.storyId, storyId)).limit(1)
+  const hasOutlines = outlineRows.length > 0
+
   const metadata = (row.metadata ?? {}) as Record<string, unknown>
   await Promise.resolve(searchParams)
   return (
     <ShortDramaSetupPage
       storyId={storyId}
       storyMetadata={metadata}
+      hasOutlines={hasOutlines}
       storyConfig={{
         title: row.title ?? "",
         ratio: row.aspectRatio ?? "16:9",
