@@ -74,77 +74,81 @@ export async function ContinueWorkSection(): Promise<ReactElement> {
     const session = await verifySessionToken(token, traceId)
     if (!session) return []
 
-    const db = await getDb({ stories, storyOutlines, storyboards })
-    const rows = await db
-      .select({
-        id: stories.id,
-        title: stories.title,
-        updatedAt: stories.updatedAt,
-        aspectRatio: stories.aspectRatio,
-        resolution: stories.resolution,
-        progressStage: stories.progressStage,
-        storyType: stories.storyType
-      })
-      .from(stories)
-      .where(eq(stories.userId, session.userId))
-      .orderBy(desc(stories.updatedAt))
-      .limit(3)
+    try {
+      const db = await getDb({ stories, storyOutlines, storyboards })
+      const rows = await db
+        .select({
+          id: stories.id,
+          title: stories.title,
+          updatedAt: stories.updatedAt,
+          aspectRatio: stories.aspectRatio,
+          resolution: stories.resolution,
+          progressStage: stories.progressStage,
+          storyType: stories.storyType
+        })
+        .from(stories)
+        .where(eq(stories.userId, session.userId))
+        .orderBy(desc(stories.updatedAt))
+        .limit(3)
 
-    const ids = rows.map((r) => r.id)
-    if (ids.length === 0) return []
+      const ids = rows.map((r) => r.id)
+      if (ids.length === 0) return []
 
-    const outlineRows = await db
-      .select({ storyId: storyOutlines.storyId, id: storyOutlines.id, sequence: storyOutlines.sequence })
-      .from(storyOutlines)
-      .where(inArray(storyOutlines.storyId, ids))
-      .orderBy(desc(storyOutlines.sequence))
+      const outlineRows = await db
+        .select({ storyId: storyOutlines.storyId, id: storyOutlines.id, sequence: storyOutlines.sequence })
+        .from(storyOutlines)
+        .where(inArray(storyOutlines.storyId, ids))
+        .orderBy(desc(storyOutlines.sequence))
 
-    const outlineByStoryId = new Map<string, { id: string; sequence: number }>()
-    for (const r of outlineRows) {
-      const existed = outlineByStoryId.get(r.storyId)
-      if (!existed || r.sequence > existed.sequence) outlineByStoryId.set(r.storyId, { id: r.id, sequence: r.sequence })
-    }
-
-    const firstEpisodeRows = await db
-      .select({ storyId: storyOutlines.storyId, outlineId: storyOutlines.id })
-      .from(storyOutlines)
-      .where(and(inArray(storyOutlines.storyId, ids), eq(storyOutlines.sequence, 1)))
-
-    const firstOutlineIdByStoryId = new Map<string, string>()
-    for (const r of firstEpisodeRows) {
-      firstOutlineIdByStoryId.set(r.storyId, r.outlineId)
-    }
-
-    const firstOutlineIds = Array.from(new Set(firstEpisodeRows.map((r) => r.outlineId)))
-    const storyboardRows =
-      firstOutlineIds.length > 0
-        ? await db
-            .select({ outlineId: storyboards.outlineId, frames: storyboards.frames })
-            .from(storyboards)
-            .where(and(inArray(storyboards.outlineId, firstOutlineIds), eq(storyboards.sequence, 1)))
-        : []
-
-    const previewByOutlineId = new Map<string, string>()
-    for (const r of storyboardRows) {
-      const frames = r.frames as unknown as { first?: { thumbnailUrl?: string | null; url?: string | null } } | null
-      const url = (frames?.first?.thumbnailUrl ?? frames?.first?.url ?? "").trim()
-      if (url) previewByOutlineId.set(r.outlineId, url)
-    }
-
-    return rows.map((r) => {
-      const normalizedTitle = (r.title ?? "未命名").trim() || "未命名"
-      const normalizedStage = (r.progressStage ?? "draft").trim() || "draft"
-      const latestOutlineId = outlineByStoryId.get(r.id)?.id ?? null
-      const firstOutlineId = firstOutlineIdByStoryId.get(r.id) ?? null
-      const previewUrl = firstOutlineId ? previewByOutlineId.get(firstOutlineId) ?? null : null
-      return {
-        ...r,
-        title: normalizedTitle,
-        progressStage: normalizedStage,
-        outlineId: latestOutlineId,
-        previewUrl
+      const outlineByStoryId = new Map<string, { id: string; sequence: number }>()
+      for (const r of outlineRows) {
+        const existed = outlineByStoryId.get(r.storyId)
+        if (!existed || r.sequence > existed.sequence) outlineByStoryId.set(r.storyId, { id: r.id, sequence: r.sequence })
       }
-    })
+
+      const firstEpisodeRows = await db
+        .select({ storyId: storyOutlines.storyId, outlineId: storyOutlines.id })
+        .from(storyOutlines)
+        .where(and(inArray(storyOutlines.storyId, ids), eq(storyOutlines.sequence, 1)))
+
+      const firstOutlineIdByStoryId = new Map<string, string>()
+      for (const r of firstEpisodeRows) {
+        firstOutlineIdByStoryId.set(r.storyId, r.outlineId)
+      }
+
+      const firstOutlineIds = Array.from(new Set(firstEpisodeRows.map((r) => r.outlineId)))
+      const storyboardRows =
+        firstOutlineIds.length > 0
+          ? await db
+              .select({ outlineId: storyboards.outlineId, frames: storyboards.frames })
+              .from(storyboards)
+              .where(and(inArray(storyboards.outlineId, firstOutlineIds), eq(storyboards.sequence, 1)))
+          : []
+
+      const previewByOutlineId = new Map<string, string>()
+      for (const r of storyboardRows) {
+        const frames = r.frames as unknown as { first?: { thumbnailUrl?: string | null; url?: string | null } } | null
+        const url = (frames?.first?.thumbnailUrl ?? frames?.first?.url ?? "").trim()
+        if (url) previewByOutlineId.set(r.outlineId, url)
+      }
+
+      return rows.map((r) => {
+        const normalizedTitle = (r.title ?? "未命名").trim() || "未命名"
+        const normalizedStage = (r.progressStage ?? "draft").trim() || "draft"
+        const latestOutlineId = outlineByStoryId.get(r.id)?.id ?? null
+        const firstOutlineId = firstOutlineIdByStoryId.get(r.id) ?? null
+        const previewUrl = firstOutlineId ? previewByOutlineId.get(firstOutlineId) ?? null : null
+        return {
+          ...r,
+          title: normalizedTitle,
+          progressStage: normalizedStage,
+          outlineId: latestOutlineId,
+          previewUrl
+        }
+      })
+    } catch {
+      return []
+    }
   })()
 
   return (
