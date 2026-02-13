@@ -7,7 +7,6 @@
   background: var(--theme-surface);
   box-shadow: var(--theme-shadow-strong);
   backdrop-filter: var(--theme-blur);
-  position: relative;
   overflow: hidden;
 }
 
@@ -151,4 +150,3 @@
 .btnDanger:hover {
   background: rgba(239, 68, 68, 0.22);
 }
-

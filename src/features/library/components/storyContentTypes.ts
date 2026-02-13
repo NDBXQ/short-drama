@@ -8,6 +8,7 @@ export type StoryDetail = {
   aspectRatio: string
   resolution: string
   shotStyle: string
+  finalVideoUrl: string | null
   metadata: unknown
   createdAt: string
   updatedAt: string | null
@@ -47,4 +48,3 @@ export type GeneratedAudio = {
   content: string
   url: string
 }
-

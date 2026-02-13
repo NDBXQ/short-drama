@@ -30,6 +30,8 @@ type StoryboardTableProps = {
   ) => void
   onGenerateReferenceImages?: (storyboardId: string) => void
   refImageGeneratingById?: Record<string, boolean>
+  onRegenerateStoryboard?: (storyboardId: string) => void
+  regeneratingById?: Record<string, boolean>
   onOpenEdit: (params: OpenStoryboardTextEditParams) => void
   onOpenDetails: (itemId: string) => void
   onDelete: (id: string) => void
@@ -53,6 +55,8 @@ export function StoryboardTable({
   onPreviewImage,
   onGenerateReferenceImages,
   refImageGeneratingById,
+  onRegenerateStoryboard,
+  regeneratingById,
   onOpenEdit,
   onOpenDetails,
   onDelete
@@ -227,6 +231,8 @@ export function StoryboardTable({
                   onDeleteAsset={onDeleteAsset}
                   onGenerateReferenceImages={onGenerateReferenceImages}
                   refImageGenerating={Boolean(refImageGeneratingById?.[item.id])}
+                  onRegenerate={onRegenerateStoryboard}
+                  regenerating={Boolean(regeneratingById?.[item.id])}
                   onOpenEdit={onOpenEdit}
                   onOpenDetails={onOpenDetails}
                   onDelete={onDelete}

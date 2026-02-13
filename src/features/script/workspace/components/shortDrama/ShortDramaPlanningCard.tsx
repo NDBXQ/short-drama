@@ -143,7 +143,7 @@ export function ShortDramaPlanningCard({
 
     ;(inner as any).parameter_module = {
       ...pmObj,
-      total_episodes: clampInt((pmObj as any).total_episodes, 40, 150, 60),
+      total_episodes: clampInt((pmObj as any).total_episodes, 5, 150, 60),
       dialogue_word_ratio: clampInt((pmObj as any).dialogue_word_ratio, 30, 60, 40),
       main_characters_limit: clampInt((pmObj as any).main_characters_limit, 1, 10, 10),
       scenes_per_episode_limit: clampInt((pmObj as any).scenes_per_episode_limit, 1, 10, 3),
@@ -447,9 +447,9 @@ export function ShortDramaPlanningCard({
             unit="集"
             value={getInt(parameterModule?.total_episodes, 60)}
             editing={editing}
-            min={40}
+            min={5}
             max={150}
-            onChange={(v) => updateParams({ total_episodes: clampInt(v, 40, 150) })}
+            onChange={(v) => updateParams({ total_episodes: clampInt(v, 5, 150) })}
           />
           <RangeField
             label="对白占比"

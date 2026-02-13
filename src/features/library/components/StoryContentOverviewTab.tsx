@@ -5,10 +5,13 @@ import styles from "./StoryContentModal.module.css"
 import type { Outline, StoryDetail } from "./storyContentTypes"
 import { StoryContentExpandableText } from "./StoryContentExpandableText"
 import { getShotStyleLabel } from "@/shared/shotStyle"
+import { StoryContentFinalVideoPreview } from "./StoryContentFinalVideoPreview"
 
 export function StoryContentOverviewTab({ story, outlines }: { story: StoryDetail | null; outlines: Outline[] }): ReactElement {
   return (
     <>
+      <StoryContentFinalVideoPreview url={story?.finalVideoUrl} />
+
       <div className={styles.section}>
         <div className={styles.sectionTitle}>基础信息</div>
         <div className={styles.kvRow}>

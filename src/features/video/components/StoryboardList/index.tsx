@@ -120,6 +120,7 @@ export function StoryboardList({
   const [panelOpen, setPanelOpen] = useState(false)
   const autoOpenedPanelRef = useRef(false)
   const [refImageGeneratingById, setRefImageGeneratingById] = useState<Record<string, boolean>>({})
+  const [regeneratingById, setRegeneratingById] = useState<Record<string, boolean>>({})
   const [createVideoBusy, setCreateVideoBusy] = useState(false)
   const { isAutoGenerating, generationStage, generationEpisodeId, textBatchMeta, scriptSummary, promptSummary, assetSummary, episodeProgressById } = useAutoGenerateStoryboards({
     autoGenerate,
@@ -295,6 +296,81 @@ export function StoryboardList({
           scriptContent: next.scriptContent ?? prev.scriptContent
         }))
       }
+    }
+  }
+
+  const handleRegenerateStoryboard = async (storyboardId: string) => {
+    if (!storyboardId) return
+    if (regeneratingById[storyboardId]) return
+    const base = items.find((it) => it.id === storyboardId)
+    if (!base) {
+      setNotice({ type: "error", message: "未找到对应分镜，无法重新生成" })
+      return
+    }
+    if (!storyId) {
+      setNotice({ type: "error", message: "缺少 storyId，无法重新生成" })
+      return
+    }
+    const ok = await requestConfirm({
+      title: "重新生成分镜",
+      message: `将重新生成镜号 ${base.scene_no} 的脚本、提示词与参考图。\n确定继续吗？`,
+      confirmText: "重新生成",
+      cancelText: "取消"
+    })
+    if (!ok) return
+
+    setRegeneratingById((prev) => ({ ...prev, [storyboardId]: true }))
+    setNotice(null)
+    try {
+      const script = await generateScriptForItem(base)
+      if (!script) throw new Error("脚本生成失败")
+
+      const promptOk = await generateStoryboardPrompts(storyboardId)
+      if (!promptOk) throw new Error("提示词生成失败")
+
+      if (activeEpisode) {
+        const latest = await fetchStoryboards(storyId, activeEpisode)
+        const next = latest.find((it) => it.id === storyboardId)
+        if (next) {
+          updateItemById(storyboardId, (prev) => ({
+            ...prev,
+            frames: next.frames,
+            videoInfo: next.videoInfo ?? prev.videoInfo,
+            scriptContent: next.scriptContent ?? prev.scriptContent
+          }))
+        }
+      }
+
+      const prompts = extractReferenceImagePrompts(script)
+      if (prompts.length === 0) {
+        setNotice({ type: "info", message: "未解析到参考图提示词；请先完善分镜描述或重新生成脚本" })
+        return
+      }
+
+      const jobId = await startReferenceImageJob({
+        storyId,
+        storyboardId,
+        prompts: prompts.map((p) => ({
+          name: p.name,
+          prompt: p.prompt,
+          description: p.description,
+          category: p.category === "reference" ? "item" : p.category
+        })),
+        forceRegenerate: true
+      })
+
+      try {
+        await waitReferenceImageJob(jobId)
+        window.dispatchEvent(new CustomEvent("video_reference_images_updated", { detail: { storyboardId } }))
+      } catch (e) {
+        const anyErr = e as { message?: string }
+        setNotice({ type: "error", message: anyErr?.message ?? "参考图生成失败" })
+      }
+    } catch (e) {
+      const anyErr = e as { message?: string }
+      setNotice({ type: "error", message: anyErr?.message ?? "重新生成失败" })
+    } finally {
+      setRegeneratingById((prev) => ({ ...prev, [storyboardId]: false }))
     }
   }
 
@@ -617,6 +693,8 @@ export function StoryboardList({
           onPreviewImage={openPreview}
           onGenerateReferenceImages={handleGenerateReferenceImages}
           refImageGeneratingById={refImageGeneratingById}
+          onRegenerateStoryboard={handleRegenerateStoryboard}
+          regeneratingById={regeneratingById}
           onOpenEdit={handleOpenEdit}
           onOpenDetails={openDetails}
           onDelete={handleDelete}

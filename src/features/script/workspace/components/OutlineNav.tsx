@@ -90,6 +90,15 @@ export function OutlineNav({
   const allOutlineIds = useMemo(() => outlines.map((o) => o.outlineId), [outlines])
   const selectedCount = selectedOutlineIds.size
   const isAllSelected = allOutlineIds.length > 0 && selectedCount === allOutlineIds.length
+  const selectedStages = useMemo(() => {
+    const stages: string[] = []
+    for (const g of grouped) {
+      if (g.items.some((it) => selectedOutlineIds.has(it.outlineId))) stages.push(g.stage)
+    }
+    return stages
+  }, [grouped, selectedOutlineIds])
+  const singleSelectedStage = selectedCount > 0 && selectedStages.length === 1 ? selectedStages[0] : null
+  const showHeaderActions = singleSelectedStage === null
 
   return (
     <nav className={styles.outlineNav} aria-label="选择剧本大纲章节">
@@ -97,26 +106,40 @@ export function OutlineNav({
         <div className={styles.outlineNavHeaderTop}>
           <div className={styles.outlineNavTitle}>大纲章节</div>
           <div className={styles.outlineNavHeaderRight}>
-            {selectedCount > 0 ? <div className={styles.outlineNavMeta}>已选 {selectedCount}</div> : null}
-            {allOutlineIds.length > 0 ? (
-              <button
-                type="button"
-                className={styles.outlineNavActionBtn}
-                disabled={deleting}
-                onClick={() => (isAllSelected ? clearSelection() : selectAll(allOutlineIds))}
-              >
-                {isAllSelected ? "清空选择" : "全选"}
-              </button>
-            ) : null}
-            {selectedCount > 0 ? (
-              <button
-                type="button"
-                className={`${styles.outlineNavActionBtn} ${styles.outlineNavActionBtnDanger}`}
-                disabled={deleting}
-                onClick={() => setConfirmDeleteOutlineIds(Array.from(selectedOutlineIds))}
-              >
-                删除（{selectedCount}）
-              </button>
+            {selectedCount > 0 ? <div className={styles.selectionPill}>已选 {selectedCount}</div> : null}
+            {showHeaderActions ? (
+              <div className={styles.actionGroup}>
+                {allOutlineIds.length > 0 ? (
+                  <button
+                    type="button"
+                    className={styles.actionBtn}
+                    disabled={deleting || isAllSelected}
+                    onClick={() => selectAll(allOutlineIds)}
+                  >
+                    全选全部
+                  </button>
+                ) : null}
+                {selectedCount > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      className={styles.actionBtn}
+                      disabled={deleting}
+                      onClick={() => clearSelection()}
+                    >
+                      清空选择
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                      disabled={deleting}
+                      onClick={() => setConfirmDeleteOutlineIds(Array.from(selectedOutlineIds))}
+                    >
+                      删除（{selectedCount}）
+                    </button>
+                  </>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>
@@ -124,51 +147,56 @@ export function OutlineNav({
       </div>
       <div className={styles.outlineNavList}>
         {outlines.length === 0 ? <div className={styles.outlineNavEmpty}>暂无大纲</div> : null}
-        {grouped.map((g) => (
-          <section key={g.stage} className={styles.group} aria-label={`${g.stage} 段`}>
-            <div className={styles.groupLabel}>{g.stage}</div>
-            <div className={styles.groupItems}>
-              {(() => {
-                const groupIds = g.items.map((it) => it.outlineId)
-                const selectedIds = groupIds.filter((id) => selectedOutlineIds.has(id))
-                const isGroupAllSelected = groupIds.length > 0 && selectedIds.length === groupIds.length
-                return (
+        {grouped.map((g) => {
+          const groupIds = g.items.map((it) => it.outlineId)
+          const selectedIds = groupIds.filter((id) => selectedOutlineIds.has(id))
+          const isGroupAllSelected = groupIds.length > 0 && selectedIds.length === groupIds.length
+          const showGroupActions = singleSelectedStage === g.stage
+
+          return (
+            <section key={g.stage} className={styles.group} aria-label={`${g.stage} 段`}>
+              <div className={styles.groupHeader}>
+                <div className={styles.groupLabel}>{g.stage}</div>
+                {showGroupActions ? (
                   <div className={styles.groupTools}>
-                    {selectedIds.length > 0 ? <div className={styles.groupMeta}>已选 {selectedIds.length}</div> : null}
-                    {groupIds.length > 0 ? (
-                      <button
-                        type="button"
-                        className={styles.groupActionBtn}
-                        disabled={deleting}
-                        onClick={() => {
-                          if (isGroupAllSelected) {
-                            const next = new Set(selectedOutlineIds)
-                            for (const id of groupIds) next.delete(id)
-                            selectAll(Array.from(next))
-                          } else {
-                            const next = new Set(selectedOutlineIds)
-                            for (const id of groupIds) next.add(id)
-                            selectAll(Array.from(next))
-                          }
-                        }}
-                      >
-                        {isGroupAllSelected ? "清空" : "全选"}
-                      </button>
-                    ) : null}
-                    {selectedIds.length > 0 ? (
-                      <button
-                        type="button"
-                        className={`${styles.groupActionBtn} ${styles.groupActionBtnDanger}`}
-                        disabled={deleting}
-                        onClick={() => setConfirmDeleteOutlineIds(selectedIds)}
-                      >
-                        删除（{selectedIds.length}）
-                      </button>
-                    ) : null}
+                    <div className={styles.selectionPill}>已选 {selectedIds.length}</div>
+                    <button
+                      type="button"
+                      className={styles.actionBtn}
+                      disabled={deleting || isGroupAllSelected}
+                      onClick={() => {
+                        const next = new Set(selectedOutlineIds)
+                        for (const id of groupIds) next.add(id)
+                        selectAll(Array.from(next))
+                      }}
+                    >
+                      全选本组
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.actionBtn}
+                      disabled={deleting || selectedIds.length === 0}
+                      onClick={() => {
+                        const next = new Set(selectedOutlineIds)
+                        for (const id of groupIds) next.delete(id)
+                        selectAll(Array.from(next))
+                      }}
+                    >
+                      清空本组
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                      disabled={deleting || selectedIds.length === 0}
+                      onClick={() => setConfirmDeleteOutlineIds(selectedIds)}
+                    >
+                      删除（{selectedIds.length}）
+                    </button>
                   </div>
-                )
-              })()}
-              {g.items.map((item) => {
+                ) : null}
+              </div>
+              <div className={styles.groupItems}>
+                {g.items.map((item) => {
                 const isActive = item.sequence === activeOutline?.sequence
                 const href = `/script/workspace/${encodeURIComponent(storyId)}?mode=${mode}&outline=${item.sequence}`
                 const rewriteState = rewriteBySeq[item.sequence]
@@ -213,7 +241,6 @@ export function OutlineNav({
                       checked={selected}
                       disabled={deleting}
                       onClick={(e) => {
-                        e.preventDefault()
                         e.stopPropagation()
                       }}
                       onChange={() => toggleSelected(item.outlineId)}
@@ -245,9 +272,10 @@ export function OutlineNav({
                   </div>
                 )
               })}
-            </div>
-          </section>
-        ))}
+              </div>
+            </section>
+          )
+        })}
       </div>
     </nav>
   )
