@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState } from "react"
 import type { StoryboardItem } from "../../../types"
-import { fetchStoryboards, generateStoryboardPrompts, generateStoryboardText } from "../../../api/generation"
+import { enqueueStoryboardTextJob, fetchStoryboards, generateStoryboardPrompts } from "../../../api/generation"
 import { extractReferenceImagePrompts } from "../../../utils/referenceImagePrompts"
 import { startReferenceImageJob, waitReferenceImageJob } from "../../../utils/referenceImageAsync"
 import { chunkArray, normalizeCategory, toEntityKey } from "../../../utils/autoGenerateUtils"
+import { waitJobDone } from "@/shared/jobs/waitJob"
 
 export function useEpisodeRegeneration(params: {
   storyId?: string
@@ -57,7 +58,15 @@ export function useEpisodeRegeneration(params: {
 
     setRegenStatus({ status: "running", message: "生成分镜文本…" })
     try {
-      await generateStoryboardText(activeEpisode, outline.outlineText, outline.originalText)
+      const traceId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : "client"
+      const { jobId } = await enqueueStoryboardTextJob({
+        outlineId: activeEpisode,
+        outline: outline.outlineText,
+        original: outline.originalText,
+        traceId
+      })
+      const job = await waitJobDone({ jobId, minIntervalMs: 900, maxIntervalMs: 2400, timeoutMs: 12 * 60_000, traceId })
+      if (job.status !== "done") throw new Error("分镜文本生成失败")
 
       setRegenStatus({ status: "running", message: "加载分镜列表…" })
       const refreshed = await fetchStoryboards(storyId, activeEpisode)
@@ -75,7 +84,7 @@ export function useEpisodeRegeneration(params: {
           else scriptFailed += 1
           setRegenStatus({ status: "running", message: `生成分镜脚本 ${scriptDone + scriptFailed}/${scriptCandidates.length}` })
         }),
-        5
+        2
       )
 
       const scriptedItems = await fetchStoryboards(storyId, activeEpisode)
@@ -95,7 +104,7 @@ export function useEpisodeRegeneration(params: {
               setCombinedProgress()
             }
           }),
-          5
+          3
         )
       }
 

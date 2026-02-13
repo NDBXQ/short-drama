@@ -40,6 +40,7 @@
     "node_modules",
     "before",
     "before/**",
+    ".next/dev/**",
     ".trae",
     ".trae/**"
   ]

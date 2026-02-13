@@ -58,12 +58,16 @@ export async function generateImageByCoze(
   imageType: "background" | "role" | "item" = "item",
   options?: { traceId?: string; module?: string; style?: string }
 ): Promise<string> {
-  const apiUrl =
-    readEnv("REFERENCE_IMAGE_API_URL") || "https://bx3fr9ndvs.coze.site/run"
-  const token = readEnv("REFERENCE_IMAGE_API_TOKEN")
+  const defaultApiUrl = readEnv("REFERENCE_IMAGE_API_URL") || "https://bx3fr9ndvs.coze.site/run"
+  const roleApiUrl = readEnv("ROLE_IMAGE_API_URL")
+  const apiUrl = imageType === "role" && roleApiUrl ? roleApiUrl : defaultApiUrl
+
+  const defaultToken = readEnv("REFERENCE_IMAGE_API_TOKEN")
+  const roleToken = readEnv("ROLE_IMAGE_API_TOKEN")
+  const token = imageType === "role" && roleToken ? roleToken : defaultToken
   
   if (!token) {
-    throw new Error("缺少环境变量 REFERENCE_IMAGE_API_URL/REFERENCE_IMAGE_API_TOKEN")
+    throw new Error("缺少环境变量 ROLE_IMAGE_API_TOKEN 或 REFERENCE_IMAGE_API_TOKEN")
   }
 
   const traceId = options?.traceId ?? "unknown"

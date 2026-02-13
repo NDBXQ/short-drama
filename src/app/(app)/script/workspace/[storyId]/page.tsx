@@ -19,11 +19,13 @@ type ScriptWorkspaceStoryRouteProps = Readonly<{
     | Readonly<{
         mode?: string | string[]
         outline?: string | string[]
+        view?: string | string[]
       }>
     | Promise<
         Readonly<{
           mode?: string | string[]
           outline?: string | string[]
+          view?: string | string[]
         }>
       >
 }>
@@ -54,6 +56,9 @@ export default async function ScriptWorkspaceStoryRoutePage({
 
   const outlineValue = resolvedSearchParams?.outline
   const outline = Array.isArray(outlineValue) ? outlineValue[0] : outlineValue
+
+  const viewValue = resolvedSearchParams?.view
+  const view = Array.isArray(viewValue) ? viewValue[0] : viewValue
 
   const db = await getDb({ storyOutlines, stories })
   const storyRows = await db.select({ metadata: stories.metadata }).from(stories).where(eq(stories.id, storyId)).limit(1)
@@ -86,6 +91,7 @@ export default async function ScriptWorkspaceStoryRoutePage({
       mode={mode === "source" ? "source" : "brief"}
       storyId={storyId}
       outline={outline}
+      view={view}
       outlines={outlines}
       storyMetadata={storyMetadata}
     />

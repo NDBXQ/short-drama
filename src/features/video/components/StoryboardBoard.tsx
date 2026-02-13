@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactElement } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import type { StoryboardItem } from "@/features/video/types"
@@ -77,16 +77,44 @@ export function StoryboardBoard({
     return episodes[0]?.id ?? ""
   }, [activeEpisode, episodes])
 
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; sceneNo: number } | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const selectedCount = selectedIds.size
+  const isAllSelected = items.length > 0 && selectedCount === items.length
+
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [safeActiveEpisode])
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(() => {
+      if (items.length === 0) return new Set()
+      if (isAllSelected) return new Set()
+      return new Set(items.map((it) => it.id))
+    })
+  }, [isAllSelected, items])
+
+  const [confirmDelete, setConfirmDelete] = useState<{ ids: string[]; label: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const openDeleteConfirm = useCallback(
-    (id: string) => {
-      const hit = items.find((it) => it.id === id)
-      setDeleteTarget({ id, sceneNo: hit?.scene_no ?? 0 })
-    },
-    [items]
-  )
+  const openDeleteConfirm = useCallback((id: string) => {
+    const hit = items.find((it) => it.id === id)
+    const label = hit?.scene_no ? `镜 ${hit.scene_no}` : "该镜头"
+    setConfirmDelete({ ids: [id], label })
+  }, [items])
+
+  const openBatchDeleteConfirm = useCallback(() => {
+    if (selectedIds.size === 0) return
+    setConfirmDelete({ ids: Array.from(selectedIds), label: `选中的 ${selectedIds.size} 个镜头` })
+  }, [selectedIds])
 
   const deleteFromServer = useCallback(async (ids: string[]) => {
     const res = await fetch("/api/video/storyboards", {
@@ -98,21 +126,23 @@ export function StoryboardBoard({
     if (!res.ok || !json?.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
   }, [])
 
-  const confirmDelete = useCallback(async () => {
-    if (!deleteTarget || isDeleting) return
+  const confirmDeleteAction = useCallback(async () => {
+    if (!confirmDelete || isDeleting) return
     setIsDeleting(true)
+    const idSet = new Set(confirmDelete.ids)
     try {
-      await deleteFromServer([deleteTarget.id])
+      await deleteFromServer(confirmDelete.ids)
       if (reloadShots && safeActiveEpisode) await reloadShots(safeActiveEpisode)
-      else setItems((prev) => prev.filter((it) => it.id !== deleteTarget.id).map((it, i) => ({ ...it, scene_no: i + 1 })))
-      setDeleteTarget(null)
+      else setItems((prev) => prev.filter((it) => !idSet.has(it.id)).map((it, i) => ({ ...it, scene_no: i + 1 })))
+      setConfirmDelete(null)
+      setSelectedIds(new Set())
     } catch (e) {
       const anyErr = e as { message?: string }
       alert(anyErr?.message ?? "删除失败")
     } finally {
       setIsDeleting(false)
     }
-  }, [deleteFromServer, deleteTarget, isDeleting, reloadShots, safeActiveEpisode, setItems])
+  }, [confirmDelete, deleteFromServer, isDeleting, reloadShots, safeActiveEpisode, setItems])
 
   return (
     <section className={styles.board} aria-label="分镜故事板">
@@ -157,6 +187,30 @@ export function StoryboardBoard({
                 <h2 className={toolbarStyles.toolbarTitle}>分镜脚本</h2>
                 <span className={toolbarStyles.toolbarMeta}>共 {items.length} 个镜头</span>
               </div>
+              <div className={toolbarStyles.toolbarActions}>
+                {selectedCount > 0 ? <span className={toolbarStyles.toolbarMeta}>已选 {selectedCount}</span> : null}
+                {items.length > 0 ? (
+                  <button
+                    type="button"
+                    className={toolbarStyles.btn}
+                    onClick={toggleSelectAll}
+                    disabled={Boolean(isLoading || isDeleting)}
+                  >
+                    {isAllSelected ? "清空选择" : "全选"}
+                  </button>
+                ) : null}
+                {selectedCount > 0 ? (
+                  <button
+                    type="button"
+                    className={`${toolbarStyles.btn} ${toolbarStyles.btnDanger}`}
+                    onClick={openBatchDeleteConfirm}
+                    disabled={Boolean(isLoading || isDeleting)}
+                  >
+                    <IconTrash />
+                    删除 ({selectedCount})
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             <div className={styles.mainInner}>
@@ -165,6 +219,7 @@ export function StoryboardBoard({
               <div className={styles.grid}>
                 {items.map((it) => {
                   const disabled = false
+                  const isSelected = selectedIds.has(it.id)
                   const handleGoToImage = () => {
                     const qs = new URLSearchParams({ storyboardId: it.id })
                     if (storyId) qs.set("storyId", storyId)
@@ -180,16 +235,27 @@ export function StoryboardBoard({
                   return (
                     <article
                       key={it.id}
-                      className={styles.card}
+                      className={`${styles.card} ${isSelected ? styles.cardSelected : ""}`}
                     >
                       <div className={styles.cardHeader}>
-                        <div className={styles.cardTitle}>镜 {it.scene_no}</div>
+                        <div className={styles.cardHeaderLeft}>
+                          <input
+                            type="checkbox"
+                            className={styles.cardSelect}
+                            checked={isSelected}
+                            disabled={Boolean(isLoading || isDeleting)}
+                            aria-label={`选择镜 ${it.scene_no}`}
+                            onChange={() => toggleSelect(it.id)}
+                          />
+                          <div className={styles.cardTitle}>镜 {it.scene_no}</div>
+                        </div>
                         <div className={styles.iconGroup}>
                           <button
                             type="button"
                             className={styles.iconBtn}
                             aria-label="删除镜头"
                             title="删除"
+                            disabled={Boolean(isDeleting)}
                             onClick={() => openDeleteConfirm(it.id)}
                           >
                             <IconTrash />
@@ -242,17 +308,17 @@ export function StoryboardBoard({
       </div>
 
       <ConfirmModal
-        open={Boolean(deleteTarget)}
+        open={Boolean(confirmDelete)}
         title="确认删除镜头？"
-        message={`将删除「镜 ${deleteTarget?.sceneNo ?? ""}」，删除后不可恢复。`}
+        message={`将删除「${confirmDelete?.label ?? ""}」，删除后不可恢复。`}
         confirmText="删除"
         cancelText="取消"
         confirming={isDeleting}
         onCancel={() => {
           if (isDeleting) return
-          setDeleteTarget(null)
+          setConfirmDelete(null)
         }}
-        onConfirm={() => void confirmDelete()}
+        onConfirm={() => void confirmDeleteAction()}
       />
     </section>
   )

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react"
 import type { StoryboardItem } from "../types"
 import { extractVideoScript } from "../utils/storyboardUtils"
 import type { StoryboardScriptContent } from "@/shared/schema"
+import { waitJobDone } from "@/shared/jobs/waitJob"
 
 type ScriptGenerateTone = "info" | "warn" | "error"
 export type ScriptGenerateState = { status: "idle" | "generating" | "success" | "error"; tone?: ScriptGenerateTone; message?: string }
@@ -43,15 +44,23 @@ export function useScriptGeneration({ items, updateItemById }: UseScriptGenerati
     }))
 
     try {
+      const traceId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : "client"
       const res = await fetch("/api/coze/storyboard/generate-script", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ raw_script: raw, storyboardId: item.id })
+        headers: { "Content-Type": "application/json", "x-trace-id": traceId },
+        body: JSON.stringify({ raw_script: raw, storyboardId: item.id, async: true })
       })
-      const json = (await res.json()) as { ok: boolean; data?: unknown; error?: { message?: string } }
-      if (!res.ok || !json?.ok || !json.data) throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
+      const json = (await res.json()) as { ok: boolean; data?: { jobId?: string }; error?: { message?: string } }
+      if (!res.ok || !json?.ok || !json.data?.jobId) throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
 
-      const videoScript = extractVideoScript(json.data)
+      const job = await waitJobDone({ jobId: json.data.jobId, minIntervalMs: 900, maxIntervalMs: 2400, timeoutMs: 14 * 60_000, traceId })
+      if (job.status !== "done") {
+        const msg = typeof (job.snapshot as any)?.errorMessage === "string" ? String((job.snapshot as any).errorMessage) : "生成失败"
+        throw new Error(msg)
+      }
+      const result = (job.snapshot as any)?.result as unknown
+
+      const videoScript = extractVideoScript(result)
       if (!videoScript) throw new Error("接口返回缺少 video_script")
 
       const safeString = (value: unknown) => (typeof value === "string" ? value : "")
@@ -128,7 +137,7 @@ export function useScriptGeneration({ items, updateItemById }: UseScriptGenerati
         ...it,
         shot_info: patchShotInfo,
         shot_content: patchShotContent,
-        scriptContent: json.data as StoryboardScriptContent,
+        scriptContent: result as StoryboardScriptContent,
         videoInfo: {
           ...(it.videoInfo ?? {}),
           durationSeconds: patchShotInfo.shot_duration > 0 ? Math.trunc(patchShotInfo.shot_duration) : it.videoInfo?.durationSeconds
@@ -140,7 +149,7 @@ export function useScriptGeneration({ items, updateItemById }: UseScriptGenerati
         [item.id]: { status: "success", tone: "info", message: "已生成" }
       }))
 
-      return json.data
+      return result
 
     } catch (e) {
       const anyErr = e as { message?: string }

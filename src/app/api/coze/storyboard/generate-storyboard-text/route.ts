@@ -7,11 +7,15 @@ import { logger } from "@/shared/logger"
 import { getTraceId } from "@/shared/trace"
 import { getSessionFromRequest } from "@/shared/session"
 import type { NextRequest } from "next/server"
+import { and, eq } from "drizzle-orm"
+import { getDb } from "coze-coding-dev-sdk"
+import { stories, storyOutlines } from "@/shared/schema/story"
+import { clipText } from "@/server/domains/storyboard/utils/storyboardTextInput"
 
 const inputSchema = z.object({
   outlineId: z.string().trim().min(1).max(200),
-  outline: z.string().min(1).max(50_000),
-  original: z.string().min(1).max(50_000),
+  outline: z.string().min(1).max(200_000),
+  original: z.string().min(1).max(200_000),
   async: z.boolean().optional()
 })
 
@@ -73,14 +77,31 @@ export async function POST(req: Request): Promise<Response> {
       })
     }
 
+    const clippedOutline = clipText(parsed.data.outline, 49_000)
+    const clippedOriginal = clipText(parsed.data.original, 49_000)
+    if (!clippedOutline || !clippedOriginal) {
+      return NextResponse.json(makeApiErr(traceId, "COZE_VALIDATION_FAILED", "入参格式不正确"), { status: 400 })
+    }
+
     const asyncMode = parsed.data.async ?? false
     if (asyncMode) {
+      const db = await getDb({ stories, storyOutlines })
+      const [row] = await db
+        .select({ storyId: storyOutlines.storyId })
+        .from(storyOutlines)
+        .innerJoin(stories, eq(storyOutlines.storyId, stories.id))
+        .where(and(eq(storyOutlines.id, parsed.data.outlineId), eq(stories.userId, userId)))
+        .limit(1)
+      if (!row?.storyId) {
+        return NextResponse.json(makeApiErr(traceId, "OUTLINE_NOT_FOUND", "大纲章节不存在或无权限"), { status: 404 })
+      }
       const { jobId, snapshot } = await enqueueCozeGenerateStoryboardTextJob({
         userId,
         traceId,
+        storyId: row.storyId,
         outlineId: parsed.data.outlineId,
-        outline: parsed.data.outline,
-        original: parsed.data.original
+        outline: clippedOutline,
+        original: clippedOriginal
       })
       kickCozeStoryboardWorker()
       logger.info({
@@ -98,8 +119,8 @@ export async function POST(req: Request): Promise<Response> {
       traceId,
       userId,
       outlineId: parsed.data.outlineId,
-      outline: parsed.data.outline,
-      original: parsed.data.original
+      outline: clippedOutline,
+      original: clippedOriginal
     })
 
     logger.info({

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { StoryboardItem } from "../types"
 
 export type PreviewImage = {
@@ -19,6 +19,8 @@ export function useStoryboardPreviews(params: { storyId?: string; items: Storybo
   const { storyId, items } = params
   const [previewsById, setPreviewsById] = useState<StoryboardPreviewsById>({})
   const [refreshKey, setRefreshKey] = useState(0)
+  const refreshTimerRef = useRef<number | null>(null)
+  const refreshPendingRef = useRef(false)
 
   const storyboardIds = useMemo(() => items.map((it) => it.id).filter(Boolean), [items])
   const nameIndex = useMemo(() => {
@@ -53,9 +55,23 @@ export function useStoryboardPreviews(params: { storyId?: string; items: Storybo
   }, [items])
 
   useEffect(() => {
-    const onRefresh = () => setRefreshKey((v) => v + 1)
+    const onRefresh = () => {
+      refreshPendingRef.current = true
+      if (refreshTimerRef.current != null) return
+      refreshTimerRef.current = window.setTimeout(() => {
+        refreshTimerRef.current = null
+        if (!refreshPendingRef.current) return
+        refreshPendingRef.current = false
+        setRefreshKey((v) => v + 1)
+      }, 400)
+    }
     window.addEventListener("video_reference_images_updated", onRefresh as EventListener)
-    return () => window.removeEventListener("video_reference_images_updated", onRefresh as EventListener)
+    return () => {
+      window.removeEventListener("video_reference_images_updated", onRefresh as EventListener)
+      if (refreshTimerRef.current != null) window.clearTimeout(refreshTimerRef.current)
+      refreshTimerRef.current = null
+      refreshPendingRef.current = false
+    }
   }, [])
 
   useEffect(() => {

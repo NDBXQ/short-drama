@@ -6,7 +6,7 @@ import { makeApiErr, makeApiOk } from "@/shared/api"
 import { logger } from "@/shared/logger"
 import { getSessionFromRequest } from "@/shared/session"
 import { getTraceId } from "@/shared/trace"
-import { stories, storyOutlines } from "@/shared/schema"
+import { stories, storyOutlines, storyboards } from "@/shared/schema"
 
 const paramsSchema = z.object({
   outlineId: z.string().trim().min(1).max(200)
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ out
   const parsedBody = bodySchema.safeParse(rawBody)
   if (!parsedBody.success) return NextResponse.json(makeApiErr(traceId, "VALIDATION_FAILED", "请求体格式不正确"), { status: 400 })
 
-  const db = await getDb({ stories, storyOutlines })
+  const db = await getDb({ stories, storyOutlines, storyboards })
   const rows = await db
     .select({
       outlineId: storyOutlines.id,
@@ -82,9 +82,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ out
     .update(storyOutlines)
     .set({
       outlineDrafts: nextDrafts as any,
-      activeOutlineDraftId: draftId
+      activeOutlineDraftId: draftId,
+      originalText: parsedBody.data.content
     })
     .where(eq(storyOutlines.id, parsedParams.data.outlineId))
+
+  const storyRows = await db
+    .select({ metadata: stories.metadata })
+    .from(stories)
+    .where(and(eq(stories.id, row.storyId), eq(stories.userId, userId)))
+    .limit(1)
+  const storyRow = storyRows[0]
+  const prevMetadata = (storyRow?.metadata ?? {}) as Record<string, unknown>
+  const prevShortDrama = (prevMetadata as any)?.shortDrama
+  const prevShortDramaObj = prevShortDrama && typeof prevShortDrama === "object" ? (prevShortDrama as Record<string, unknown>) : {}
+  const nextMetadata: Record<string, unknown> = {
+    ...prevMetadata,
+    shortDrama: {
+      ...prevShortDramaObj,
+      outlineJson: null,
+      scriptBody: null,
+      scriptBodyGeneratedAt: null
+    }
+  }
+
+  await db.update(stories).set({ metadata: nextMetadata as any, updatedAt: new Date() }).where(eq(stories.id, row.storyId))
+
+  await db.delete(storyboards).where(eq(storyboards.outlineId, row.outlineId))
 
   const durationMs = Date.now() - start
   logger.info({
@@ -98,5 +122,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ out
     draftId
   })
 
-  return NextResponse.json(makeApiOk(traceId, { outlineId: row.outlineId, draft: nextDraft, activeDraftId: draftId }), { status: 200 })
+  return NextResponse.json(
+    makeApiOk(traceId, {
+      outlineId: row.outlineId,
+      draft: nextDraft,
+      activeDraftId: draftId,
+      originalText: parsedBody.data.content,
+      metadataPatch: { shortDrama: { outlineJson: null, scriptBody: null, scriptBodyGeneratedAt: null } }
+    }),
+    { status: 200 }
+  )
 }

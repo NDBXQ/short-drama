@@ -14,17 +14,18 @@ interface UseScriptRewriteProps {
   activeOutline: OutlineItem | null | undefined
   persistOutlineDraft: (input: { outlineId: string; title?: string | null; content: string; requirements: string }) => Promise<void>
   setToast: (toast: { type: "error" | "success"; message: string } | null) => void
+  initialPreviewMode?: "outline" | "rewrite" | "body"
 }
 
 /**
  * Hook for handling script rewrite logic
  */
-export function useScriptRewrite({ storyId, activeOutline, persistOutlineDraft, setToast }: UseScriptRewriteProps) {
+export function useScriptRewrite({ storyId, activeOutline, persistOutlineDraft, setToast, initialPreviewMode }: UseScriptRewriteProps) {
   const [rewriteRequirements, setRewriteRequirements] = useState("")
   const [rewriteBySeq, setRewriteBySeq] = useState<Record<number, RewriteState>>({})
   const [rewriteMessages, setRewriteMessages] = useState<ThreadMessage[]>([])
   const rewriteAbortRef = useRef<AbortController | null>(null)
-  const [previewMode, setPreviewMode] = useState<"original" | "rewrite">("original")
+  const [previewMode, setPreviewMode] = useState<"outline" | "rewrite" | "body">(() => initialPreviewMode ?? "outline")
   const threadRef = useRef<HTMLDivElement | null>(null)
   const shouldAutoScrollRef = useRef(true)
 

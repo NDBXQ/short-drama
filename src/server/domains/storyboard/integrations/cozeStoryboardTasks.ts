@@ -10,6 +10,11 @@ import { normalizeShotStyleId } from "@/shared/shotStyle"
 import { mergeStoryboardVideoInfo } from "@/server/shared/storyboard/storyboardAssets"
 import { adaptShortDramaOutlineToOutlineList, buildShortDramaOutlineRequestBody } from "./shortDramaOutlineAdapter"
 
+function pickObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
 function extractStoryOriginal(data: unknown): string | null {
   if (!data || typeof data !== "object") return null
   const anyData = data as Record<string, unknown>
@@ -21,6 +26,14 @@ function extractStoryOriginal(data: unknown): string | null {
     const v = nestedAny["story_original"]
     if (typeof v === "string" && v.trim()) return v.trim()
   }
+  return null
+}
+
+function extractOutlineJson(data: unknown): unknown | null {
+  const obj = pickObject(data)
+  if (obj && "outline_json" in obj) return (obj as any).outline_json ?? null
+  const nested = obj ? pickObject((obj as any).data) : null
+  if (nested && "outline_json" in nested) return (nested as any).outline_json ?? null
   return null
 }
 
@@ -98,6 +111,22 @@ export async function runGenerateOutline(input: {
       })
       .returning()
     story = newStory
+  }
+
+  const outlineJson = extractOutlineJson(coze.data)
+  if (outlineJson) {
+    const [metaRow] = await db.select({ metadata: stories.metadata }).from(stories).where(eq(stories.id, story.id)).limit(1)
+    const metadata = ((metaRow?.metadata ?? {}) as Record<string, unknown>) ?? {}
+    const shortDramaObj = pickObject((metadata as any)?.shortDrama) ?? {}
+    const nextMetadata = {
+      ...metadata,
+      shortDrama: {
+        ...shortDramaObj,
+        outlineJson,
+        outlineJsonGeneratedAt: Date.now()
+      }
+    }
+    await db.update(stories).set({ metadata: nextMetadata, updatedAt: new Date() }).where(eq(stories.id, story.id))
   }
 
   await updateStoryStatus(story.id, {

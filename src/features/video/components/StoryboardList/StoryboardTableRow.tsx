@@ -63,46 +63,127 @@ export function StoryboardTableRow({
   const [moreList, setMoreList] = useState<
     Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
   >([])
+  const [moreSelectedIds, setMoreSelectedIds] = useState<Set<string>>(() => new Set())
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [confirmTarget, setConfirmTarget] = useState<{ category: "role" | "item"; name: string; imageId?: string | null; isGlobal?: boolean } | null>(null)
+  const [confirmPayload, setConfirmPayload] = useState<
+    | { type: "single"; target: { key: string; category: "role" | "item"; name: string; imageId?: string | null; isGlobal?: boolean } }
+    | { type: "batch"; targets: Array<{ key: string; category: "role" | "item"; name: string; imageId?: string | null; isGlobal?: boolean }> }
+    | null
+  >(null)
   const [goGenerateOpen, setGoGenerateOpen] = useState(false)
   const [goGenerateAnchorRect, setGoGenerateAnchorRect] = useState<DOMRect | null>(null)
   const canPortal = typeof document !== "undefined"
   const isPlaceholderId = useCallback((id: string) => id.startsWith("placeholder:"), [])
+  const modalCanDelete = Boolean(onDeleteAsset) && moreKind !== "background"
+  const moreSelectedCount = moreSelectedIds.size
+
+  useEffect(() => {
+    if (moreOpen) return
+    setMoreSelectedIds(new Set())
+  }, [moreOpen])
+
+  const selectableMoreIds = useMemo(() => {
+    if (!modalCanDelete) return [] as string[]
+    const ids = moreList.map((img) => img.id).filter(Boolean)
+    return Array.from(new Set(ids))
+  }, [modalCanDelete, moreList])
+
+  const isAllMoreSelected = selectableMoreIds.length > 0 && moreSelectedCount === selectableMoreIds.length
+
+  const toggleMoreSelect = useCallback((id: string) => {
+    if (!id) return
+    setMoreSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleMoreSelectAll = useCallback(() => {
+    setMoreSelectedIds(() => {
+      if (!modalCanDelete) return new Set()
+      if (isAllMoreSelected) return new Set()
+      return new Set(selectableMoreIds)
+    })
+  }, [isAllMoreSelected, modalCanDelete, selectableMoreIds])
+
   const requestDelete = useCallback(
     (p: { category: "role" | "item"; name: string; imageId?: string | null; isGlobal?: boolean }) => {
       if (!onDeleteAsset) return
       if (deletingImageId) return
-      setConfirmTarget(p)
-      setConfirmOpen(true)
+      const key = (p.imageId ?? `placeholder:${p.category}:${p.name}`).trim()
+      setConfirmPayload({ type: "single", target: { key, ...p } })
     },
     [deletingImageId, onDeleteAsset]
   )
 
+  const requestBatchDelete = useCallback(() => {
+    if (!modalCanDelete) return
+    if (!onDeleteAsset) return
+    if (deletingImageId) return
+    if (moreSelectedIds.size === 0) return
+    const targets = moreList
+      .filter((img) => moreSelectedIds.has(img.id))
+      .map((img) => ({
+        key: img.id,
+        category: moreKind === "role" ? ("role" as const) : ("item" as const),
+        name: img.name,
+        imageId: isPlaceholderId(img.id) ? null : img.id,
+        isGlobal: img.isGlobal
+      }))
+      .filter((t) => t.name?.trim())
+    if (targets.length === 0) return
+    setConfirmPayload({ type: "batch", targets })
+  }, [deletingImageId, isPlaceholderId, modalCanDelete, moreKind, moreList, moreSelectedIds, onDeleteAsset])
+
   const confirmDelete = useCallback(async () => {
     if (!onDeleteAsset) return
-    if (!confirmTarget) return
+    if (!confirmPayload) return
     if (deletingImageId) return
-    const key = (confirmTarget.imageId ?? `placeholder:${confirmTarget.category}:${confirmTarget.name}`).trim()
-    setDeletingImageId(key)
     try {
-      await onDeleteAsset({
-        storyboardId: item.id,
-        category: confirmTarget.category,
-        name: confirmTarget.name,
-        imageId: confirmTarget.imageId,
-        isGlobal: confirmTarget.isGlobal
-      })
-      setConfirmOpen(false)
-      setConfirmTarget(null)
+      if (confirmPayload.type === "single") {
+        const { target } = confirmPayload
+        setDeletingImageId(target.key)
+        await onDeleteAsset({
+          storyboardId: item.id,
+          category: target.category,
+          name: target.name,
+          imageId: target.imageId,
+          isGlobal: target.isGlobal
+        })
+        setMoreList((prev) => prev.filter((img) => img.id !== target.key))
+        setMoreSelectedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(target.key)
+          return next
+        })
+      } else {
+        setDeletingImageId("batch")
+        for (const target of confirmPayload.targets) {
+          await onDeleteAsset({
+            storyboardId: item.id,
+            category: target.category,
+            name: target.name,
+            imageId: target.imageId,
+            isGlobal: target.isGlobal
+          })
+          setMoreList((prev) => prev.filter((img) => img.id !== target.key))
+          setMoreSelectedIds((prev) => {
+            const next = new Set(prev)
+            next.delete(target.key)
+            return next
+          })
+        }
+      }
+      setConfirmPayload(null)
     } catch (e) {
       const anyErr = e as { message?: string }
       alert(anyErr?.message ?? "删除失败")
     } finally {
       setDeletingImageId(null)
     }
-  }, [confirmTarget, deletingImageId, item.id, onDeleteAsset])
+  }, [confirmPayload, deletingImageId, item.id, onDeleteAsset])
 
   useEffect(() => {
     if (!moreOpen) return
@@ -115,15 +196,14 @@ export function StoryboardTableRow({
   }, [moreOpen])
 
   useEffect(() => {
-    if (!confirmOpen) return
+    if (!confirmPayload) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return
-      setConfirmOpen(false)
-      setConfirmTarget(null)
+      setConfirmPayload(null)
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [confirmOpen])
+  }, [confirmPayload])
 
   const openMore = useCallback(
     (
@@ -149,9 +229,10 @@ export function StoryboardTableRow({
     generationState?.tone === "error" ? styles.scriptHintError : generationState?.tone === "warn" ? styles.scriptHintWarn : styles.scriptHintInfo
 
   const confirmTitle = useMemo(() => {
-    if (!confirmTarget) return "确认删除"
-    return `删除素材：${confirmTarget.name}`
-  }, [confirmTarget])
+    if (!confirmPayload) return "确认删除"
+    if (confirmPayload.type === "single") return `删除素材：${confirmPayload.target.name}`
+    return `删除素材（${confirmPayload.targets.length}）`
+  }, [confirmPayload])
 
   const renderPreviewStack = (
     list: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>,
@@ -362,7 +443,11 @@ export function StoryboardTableRow({
         <td className={tableStyles.colVisual}>
           <div className={styles.visualContent}>
             {item.storyboard_text ? <div className={styles.storyboardText}>{item.storyboard_text}</div> : null}
-            {hintText ? <div className={`${styles.scriptHint} ${hintToneClass}`}>{hintText}</div> : null}
+            {hintText ? (
+              <div className={`${styles.scriptHint} ${hintToneClass}`} title={hintText}>
+                {hintText}
+              </div>
+            ) : null}
           </div>
         </td>
         <td className={tableStyles.colRole}>
@@ -509,15 +594,56 @@ export function StoryboardTableRow({
               >
                 <div className={styles.moreHeader}>
                   <div className={styles.moreTitle}>{moreTitle}</div>
-                  <button type="button" className={styles.moreCloseBtn} onClick={() => setMoreOpen(false)} aria-label="关闭">
-                    ×
-                  </button>
+                  <div className={styles.moreHeaderRight}>
+                    {modalCanDelete ? (
+                      <>
+                        {moreSelectedCount > 0 ? <div className={styles.moreMeta}>已选 {moreSelectedCount}</div> : null}
+                        {selectableMoreIds.length > 0 ? (
+                          <button
+                            type="button"
+                            className={styles.moreActionBtn}
+                            disabled={Boolean(deletingImageId)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleMoreSelectAll()
+                            }}
+                          >
+                            {isAllMoreSelected ? "清空选择" : "全选"}
+                          </button>
+                        ) : null}
+                        {moreSelectedCount > 0 ? (
+                          <button
+                            type="button"
+                            className={`${styles.moreActionBtn} ${styles.moreActionBtnDanger}`}
+                            disabled={Boolean(deletingImageId)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              requestBatchDelete()
+                            }}
+                          >
+                            删除 ({moreSelectedCount})
+                          </button>
+                        ) : null}
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={styles.moreCloseBtn}
+                      onClick={() => setMoreOpen(false)}
+                      aria-label="关闭"
+                      disabled={Boolean(deletingImageId)}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
                 <div className={styles.moreGrid} aria-label="素材列表">
                   {moreList.map((img) => {
                     const canDelete = Boolean(onDeleteAsset) && moreKind !== "background"
+                    const canSelect = modalCanDelete && canDelete
+                    const selected = canSelect && moreSelectedIds.has(img.id)
                     return (
-                      <div key={img.id} className={styles.moreItemWrap}>
+                      <div key={img.id} className={`${styles.moreItemWrap} ${selected ? styles.moreItemWrapSelected : ""}`}>
                         <button
                           type="button"
                           className={styles.moreItem}
@@ -539,6 +665,17 @@ export function StoryboardTableRow({
                           <img className={styles.moreItemImg} src={img.thumbnailUrl ?? img.url} alt={img.name} />
                           <div className={styles.moreItemName}>{img.name}</div>
                         </button>
+                        {canSelect ? (
+                          <input
+                            type="checkbox"
+                            className={styles.moreItemSelect}
+                            aria-label={`选择 ${img.name}`}
+                            checked={selected}
+                            disabled={Boolean(deletingImageId)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => toggleMoreSelect(img.id)}
+                          />
+                        ) : null}
                         {canDelete ? (
                           <button
                             type="button"
@@ -583,15 +720,14 @@ export function StoryboardTableRow({
             document.body
           )
         : null}
-      {canPortal && confirmOpen
+      {canPortal && confirmPayload
         ? createPortal(
             <div
               className={styles.confirmOverlay}
               role="presentation"
               onClick={() => {
                 if (deletingImageId) return
-                setConfirmOpen(false)
-                setConfirmTarget(null)
+                setConfirmPayload(null)
               }}
             >
               <div
@@ -608,8 +744,7 @@ export function StoryboardTableRow({
                     className={styles.confirmCloseBtn}
                     onClick={() => {
                       if (deletingImageId) return
-                      setConfirmOpen(false)
-                      setConfirmTarget(null)
+                      setConfirmPayload(null)
                     }}
                     aria-label="关闭"
                   >
@@ -618,7 +753,14 @@ export function StoryboardTableRow({
                 </div>
                 <div className={styles.confirmBody}>
                   <div className={styles.confirmDesc}>
-                    {confirmTarget?.isGlobal ? "删除后可能影响其他镜头复用。" : "删除后将从该镜头脚本中移除对应实体。"}
+                    {(() => {
+                      if (!confirmPayload) return ""
+                      if (confirmPayload.type === "single") {
+                        return confirmPayload.target.isGlobal ? "删除后可能影响其他镜头复用。" : "删除后将从该镜头脚本中移除对应实体。"
+                      }
+                      const hasGlobal = confirmPayload.targets.some((t) => Boolean(t.isGlobal))
+                      return hasGlobal ? "删除后可能影响其他镜头复用。" : "删除后将从该镜头脚本中移除对应实体。"
+                    })()}
                   </div>
                 </div>
                 <div className={styles.confirmActions}>
@@ -627,8 +769,7 @@ export function StoryboardTableRow({
                     className={styles.confirmBtn}
                     disabled={Boolean(deletingImageId)}
                     onClick={() => {
-                      setConfirmOpen(false)
-                      setConfirmTarget(null)
+                      setConfirmPayload(null)
                     }}
                   >
                     取消
@@ -636,7 +777,7 @@ export function StoryboardTableRow({
                   <button
                     type="button"
                     className={`${styles.confirmBtn} ${styles.confirmBtnDanger}`}
-                    disabled={Boolean(deletingImageId) || !confirmTarget}
+                    disabled={Boolean(deletingImageId) || !confirmPayload}
                     onClick={() => void confirmDelete()}
                   >
                     删除

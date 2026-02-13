@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, isNull } from "drizzle-orm"
 import { getDb } from "coze-coding-dev-sdk"
 import { randomUUID } from "crypto"
 import { generateImageByCoze } from "@/features/coze/imageClient"
@@ -181,6 +181,7 @@ export class ImageGenerationService {
     const processOne = async (p: PromptInput, index: number): Promise<void> => {
       const category = p.category
       try {
+        const storyboardMatch = storyboardIdForWrite ? eq(generatedImages.storyboardId, storyboardIdForWrite) : isNull(generatedImages.storyboardId)
         const existing =
           p.generatedImageId
             ? (
@@ -189,7 +190,8 @@ export class ImageGenerationService {
                     id: generatedImages.id,
                     url: generatedImages.url,
                     thumbnailUrl: generatedImages.thumbnailUrl,
-                    prompt: generatedImages.prompt
+                    prompt: generatedImages.prompt,
+                    storyboardId: generatedImages.storyboardId
                   })
                   .from(generatedImages)
                   .where(and(eq(generatedImages.id, p.generatedImageId), eq(generatedImages.storyId, effectiveStoryId)))
@@ -201,10 +203,11 @@ export class ImageGenerationService {
                     id: generatedImages.id,
                     url: generatedImages.url,
                     thumbnailUrl: generatedImages.thumbnailUrl,
-                    prompt: generatedImages.prompt
+                    prompt: generatedImages.prompt,
+                    storyboardId: generatedImages.storyboardId
                   })
                   .from(generatedImages)
-                  .where(and(eq(generatedImages.storyId, effectiveStoryId), eq(generatedImages.name, p.name), eq(generatedImages.category, category)))
+                  .where(and(eq(generatedImages.storyId, effectiveStoryId), storyboardMatch, eq(generatedImages.name, p.name), eq(generatedImages.category, category)))
                   .orderBy(desc(generatedImages.createdAt))
                   .limit(1)
               )[0]
@@ -255,7 +258,7 @@ export class ImageGenerationService {
               description: p.description ?? p.prompt,
               name: p.name,
               category,
-              storyboardId: storyboardIdForWrite
+              storyboardId: existing.storyboardId
             })
             .where(eq(generatedImages.id, existing.id))
             .returning()

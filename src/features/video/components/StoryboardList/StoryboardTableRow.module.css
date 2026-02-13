@@ -174,6 +174,52 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+.moreHeaderRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.moreMeta {
+  color: var(--theme-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.moreActionBtn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--theme-text-strong);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.moreActionBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--theme-border-strong);
+}
+
+.moreActionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.moreActionBtnDanger {
+  border-color: rgba(239, 68, 68, 0.32);
+  background: rgba(239, 68, 68, 0.16);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.moreActionBtnDanger:hover {
+  border-color: rgba(239, 68, 68, 0.48);
+  background: rgba(239, 68, 68, 0.22);
+}
+
 .moreTitle {
   font-size: 13px;
   font-weight: 900;
@@ -233,6 +279,22 @@
 
 .moreItemWrap {
   position: relative;
+}
+
+.moreItemWrapSelected .moreItem {
+  background: rgba(109, 94, 247, 0.14);
+  border-color: rgba(109, 94, 247, 0.45);
+}
+
+.moreItemSelect {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  accent-color: rgba(109, 94, 247, 0.95);
+  cursor: pointer;
+  z-index: 2;
 }
 
 .moreItemDelete {

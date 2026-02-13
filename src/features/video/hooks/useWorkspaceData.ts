@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { ApiErr, ApiOk } from "@/shared/api"
 import type { StoryboardItem, VideoStoryboardsResponse } from "@/features/video/types"
 import { normalizeShotsToItems } from "../utils/storyboardUtils"
@@ -22,6 +22,8 @@ export function useWorkspaceData({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [previewVersion, setPreviewVersion] = useState(0)
   const [storyboardsVersion, setStoryboardsVersion] = useState(0)
+  const previewBumpTimerRef = useRef<number | null>(null)
+  const previewBumpPendingRef = useRef(false)
   const [activePreviews, setActivePreviews] = useState<{
     role: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
     background: Array<{ id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }>
@@ -32,14 +34,33 @@ export function useWorkspaceData({
     item: []
   })
 
+  const schedulePreviewRefresh = useCallback(() => {
+    previewBumpPendingRef.current = true
+    if (previewBumpTimerRef.current != null) return
+    previewBumpTimerRef.current = window.setTimeout(() => {
+      previewBumpTimerRef.current = null
+      if (!previewBumpPendingRef.current) return
+      previewBumpPendingRef.current = false
+      setPreviewVersion((v) => v + 1)
+    }, 500)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (previewBumpTimerRef.current != null) window.clearTimeout(previewBumpTimerRef.current)
+      previewBumpTimerRef.current = null
+      previewBumpPendingRef.current = false
+    }
+  }, [])
+
   const onStoryboardEvent = useCallback(
     (ev: VideoStoryboardEvent) => {
       if (!outlineId) return
       if (ev.outlineId !== outlineId) return
       setStoryboardsVersion((v) => v + 1)
-      setPreviewVersion((v) => v + 1)
+      schedulePreviewRefresh()
     },
-    [outlineId]
+    [outlineId, schedulePreviewRefresh]
   )
 
   useVideoStoryboardEvents({
@@ -48,16 +69,16 @@ export function useWorkspaceData({
     onEvent: onStoryboardEvent,
     onFallbackTick: () => {
       setStoryboardsVersion((v) => v + 1)
-      setPreviewVersion((v) => v + 1)
+      schedulePreviewRefresh()
     }
   })
 
   const onImageEvent = useCallback(
     (ev: VideoImageEvent) => {
       if (ev.storyboardId && ev.storyboardId !== activeStoryboardId) return
-      setPreviewVersion((v) => v + 1)
+      schedulePreviewRefresh()
     },
-    [activeStoryboardId]
+    [activeStoryboardId, schedulePreviewRefresh]
   )
 
   useVideoImageEvents({
@@ -66,7 +87,7 @@ export function useWorkspaceData({
     includeGlobal: true,
     onEvent: onImageEvent,
     onFallbackTick: () => {
-      setPreviewVersion((v) => v + 1)
+      schedulePreviewRefresh()
     }
   })
 
@@ -110,6 +131,7 @@ export function useWorkspaceData({
   // Load Previews
   useEffect(() => {
     let ignore = false
+    const controller = new AbortController()
     const load = async () => {
       if (!storyId || !activeStoryboardId) {
         setActivePreviews({ role: [], background: [], item: [] })
@@ -136,7 +158,7 @@ export function useWorkspaceData({
           limit: "200",
           offset: "0"
         })
-        const res = await fetch(`/api/video-creation/images?${qs.toString()}`, { cache: "no-store" })
+        const res = await fetch(`/api/video-creation/images?${qs.toString()}`, { cache: "no-store", signal: controller.signal })
         const json = (await res.json()) as { ok: boolean; data?: { items?: any[] } }
         if (!res.ok || !json?.ok || !Array.isArray(json.data?.items)) {
           if (!ignore) setActivePreviews({ role: [], background: [], item: [] })
@@ -194,6 +216,7 @@ export function useWorkspaceData({
     void load()
     return () => {
       ignore = true
+      controller.abort()
     }
   }, [activeStoryboardId, items, storyId, previewVersion])
 

@@ -226,6 +226,8 @@
   padding: 14px 18px 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  gap: 12px;
 }
 
 .nextStepCard {
@@ -291,6 +293,25 @@
   display: grid;
   justify-items: end;
   gap: 8px;
+}
+
+.scriptInputBlock {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--theme-border);
+  box-shadow: var(--theme-shadow);
+  padding: 12px 12px;
+  overflow: auto;
+  max-height: 280px;
+}
+
+.scriptInputPre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.74);
 }
 
 .nextStepError {

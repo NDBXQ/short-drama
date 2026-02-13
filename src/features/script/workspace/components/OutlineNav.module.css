@@ -22,6 +22,60 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.outlineNavHeaderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.outlineNavHeaderRight {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.outlineNavMeta {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+}
+
+.outlineNavActionBtn {
+  border-radius: 999px;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 900;
+  font-size: 12px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  white-space: nowrap;
+}
+
+.outlineNavActionBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 52px rgba(2, 6, 23, 0.45);
+  border-color: rgba(109, 94, 247, 0.35);
+}
+
+.outlineNavActionBtnDanger:hover {
+  border-color: rgba(239, 68, 68, 0.38);
+  color: rgba(239, 68, 68, 0.9);
+}
+
+.outlineNavActionBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .outlineNavTitle {
   font-size: 14px;
   font-weight: 900;
@@ -67,9 +121,52 @@
   gap: 10px;
 }
 
+.groupTools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 18px;
+}
+
+.groupMeta {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+}
+
+.groupActionBtn {
+  border-radius: 999px;
+  border: 1px solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 900;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.groupActionBtnDanger:hover {
+  border-color: rgba(239, 68, 68, 0.38);
+  color: rgba(239, 68, 68, 0.9);
+}
+
+.groupActionBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .itemWrap {
   position: relative;
   min-width: 0;
+}
+
+.itemWrapSelected .item,
+.itemWrapSelected .itemActive {
+  border-color: rgba(109, 94, 247, 0.35);
+  box-shadow: 0 18px 52px rgba(2, 6, 23, 0.35);
 }
 
 .item,
@@ -81,11 +178,27 @@
   gap: 10px;
   text-decoration: none;
   border-radius: 12px;
-  padding: 10px 34px 10px 10px;
+  padding: 10px 34px 10px 36px;
   border: 1px solid var(--theme-border);
   background: rgba(255, 255, 255, 0.04);
   min-height: 44px;
   transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.itemSelect {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  accent-color: rgb(109, 94, 247);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.itemSelect:disabled {
+  cursor: not-allowed;
 }
 
 .item:hover {

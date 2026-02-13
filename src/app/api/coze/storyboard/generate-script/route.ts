@@ -53,6 +53,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   let effectiveDemand = "无其他需求"
+  let storyIdForJob: string | undefined = undefined
   const storyboardId = parsed.data.storyboardId?.trim() || undefined
   if (storyboardId) {
     const session = await getSessionFromRequest(req as unknown as NextRequest)
@@ -65,7 +66,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const db = await getDb({ stories, storyOutlines, storyboards })
     const rows = await db
-      .select({ shotCut: storyboards.shotCut })
+      .select({ shotCut: storyboards.shotCut, storyId: storyOutlines.storyId })
       .from(storyboards)
       .innerJoin(storyOutlines, eq(storyboards.outlineId, storyOutlines.id))
       .innerJoin(stories, eq(storyOutlines.storyId, stories.id))
@@ -76,6 +77,7 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json(makeApiErr(traceId, "STORYBOARD_NOT_FOUND", "未找到可用的分镜"), { status: 404 })
     }
     effectiveDemand = String(Boolean(rows[0]?.shotCut)) === "true" ? "需要切镜" : "无需切镜"
+    storyIdForJob = typeof (rows[0] as any)?.storyId === "string" ? String((rows[0] as any).storyId) : undefined
   }
 
   const asyncMode = parsed.data.async ?? false
@@ -93,6 +95,7 @@ export async function POST(req: Request): Promise<Response> {
       traceId,
       raw_script: parsed.data.raw_script,
       demand: effectiveDemand,
+      storyId: storyIdForJob,
       storyboardId
     })
     kickCozeStoryboardWorker()
@@ -148,10 +151,19 @@ export async function POST(req: Request): Promise<Response> {
         traceId,
         message: "分镜脚本生成失败（Coze 调用失败）",
         durationMs,
-        status: err.status
+        status: err.status,
+        cozeErrorCode: err.errorCode,
+        cozeRequestId: err.requestId
       })
+      const details = [
+        typeof err.status === "number" && Number.isFinite(err.status) ? `HTTP ${err.status}` : null,
+        typeof err.errorCode === "string" && err.errorCode.trim() ? `code=${err.errorCode.trim()}` : null,
+        typeof err.requestId === "string" && err.requestId.trim() ? `requestId=${err.requestId.trim()}` : null
+      ]
+        .filter(Boolean)
+        .join(" | ")
       return NextResponse.json(
-        makeApiErr(traceId, "COZE_REQUEST_FAILED", "Coze 调用失败，请稍后重试"),
+        makeApiErr(traceId, "COZE_REQUEST_FAILED", details ? `Coze 调用失败（${details}）` : "Coze 调用失败，请稍后重试"),
         { status: 502 }
       )
     }

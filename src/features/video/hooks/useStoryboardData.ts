@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { StoryboardItem, Episode, ApiOutline, VideoStoryboardsResponse } from "../types"
 import { normalizeShotsToItems } from "../utils/storyboardUtils"
 import { useVideoStoryboardEvents, type VideoStoryboardEvent } from "./useVideoAssetEvents"
@@ -21,6 +21,7 @@ export function useStoryboardData({ initialItems = [], storyId: initialStoryId, 
   const [lastLoadedKey, setLastLoadedKey] = useState<string>("")
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [reloadTick, setReloadTick] = useState(0)
+  const reloadDebounceTimerRef = useRef<number | null>(null)
 
   const reloadShots = useCallback(
     async (targetOutlineId?: string) => {
@@ -123,10 +124,23 @@ export function useStoryboardData({ initialItems = [], storyId: initialStoryId, 
       if (!storyId) return
       if (!activeEpisode) return
       if (ev.outlineId !== activeEpisode) return
-      void reloadShots()
+      if (typeof window === "undefined") return
+      if (reloadDebounceTimerRef.current !== null) return
+      reloadDebounceTimerRef.current = window.setTimeout(() => {
+        reloadDebounceTimerRef.current = null
+        void reloadShots()
+      }, 900)
     },
     [activeEpisode, isInitialized, reloadShots, storyId]
   )
+
+  useEffect(() => {
+    return () => {
+      if (typeof window === "undefined") return
+      if (reloadDebounceTimerRef.current !== null) window.clearTimeout(reloadDebounceTimerRef.current)
+      reloadDebounceTimerRef.current = null
+    }
+  }, [])
 
   useVideoStoryboardEvents({
     storyId,

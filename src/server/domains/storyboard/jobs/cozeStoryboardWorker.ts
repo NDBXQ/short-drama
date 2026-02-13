@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import { logger } from "@/shared/logger"
 import { insertJob, tryClaimNextJob, updateJob, getJobById, type JobStatus } from "@/server/framework/jobs/jobDb"
 import { runGenerateOutline, runGenerateScript, runGenerateStoryboardText } from "../integrations/cozeStoryboardTasks"
+import { CozeRunEndpointError } from "@/features/coze/runEndpointClient"
 
 export const COZE_GENERATE_SCRIPT_JOB_TYPE = "coze_generate_script"
 export const COZE_GENERATE_OUTLINE_JOB_TYPE = "coze_generate_outline"
@@ -13,6 +14,7 @@ type CozeScriptJobPayload = {
   traceId: string
   raw_script: string
   demand: string
+  storyId?: string
   storyboardId?: string
 }
 
@@ -33,6 +35,7 @@ type CozeStoryboardTextJobPayload = {
   jobId: string
   userId: string
   traceId: string
+  storyId?: string
   outlineId: string
   outline: string
   original: string
@@ -68,6 +71,8 @@ export async function enqueueCozeGenerateScriptJob(input: Omit<CozeScriptJobPayl
     userId: input.userId,
     type: COZE_GENERATE_SCRIPT_JOB_TYPE,
     status: "queued",
+    storyId: input.storyId ?? null,
+    storyboardId: input.storyboardId ?? null,
     payload: payload as unknown as Record<string, unknown>,
     snapshot: snapshot as unknown as Record<string, unknown>
   })
@@ -101,6 +106,7 @@ export async function enqueueCozeGenerateStoryboardTextJob(
     userId: input.userId,
     type: COZE_GENERATE_STORYBOARD_TEXT_JOB_TYPE,
     status: "queued",
+    storyId: input.storyId ?? null,
     payload: payload as unknown as Record<string, unknown>,
     snapshot: snapshot as unknown as Record<string, unknown>
   })
@@ -190,7 +196,7 @@ async function runJob(type: string, jobId: string, payload: Record<string, unkno
   } catch (e) {
     const anyErr = e as { message?: unknown; name?: unknown; stack?: unknown }
     const rawMsg = typeof anyErr?.message === "string" ? anyErr.message : "任务执行失败"
-    const msg =
+    const baseMsg =
       rawMsg === "COZE_NOT_CONFIGURED"
         ? "Coze 未配置"
         : rawMsg === "STORY_NOT_FOUND"
@@ -200,16 +206,45 @@ async function runJob(type: string, jobId: string, payload: Record<string, unkno
             : rawMsg === "FORBIDDEN"
               ? "无权限"
               : rawMsg
+    const coze = (() => {
+      const obj = e as any
+      const name = typeof obj?.name === "string" ? obj.name : ""
+      const status = typeof obj?.status === "number" && Number.isFinite(obj.status) ? obj.status : null
+      const errorCode = typeof obj?.errorCode === "string" && obj.errorCode.trim() ? obj.errorCode.trim() : null
+      const requestId = typeof obj?.requestId === "string" && obj.requestId.trim() ? obj.requestId.trim() : null
+      const cozeMessage = typeof obj?.cozeMessage === "string" && obj.cozeMessage.trim() ? obj.cozeMessage.trim() : null
+      const bodySnippet = typeof obj?.bodySnippet === "string" && obj.bodySnippet.trim() ? obj.bodySnippet.trim() : null
+      const isCoze = e instanceof CozeRunEndpointError || name === "CozeRunEndpointError" || Boolean(status || errorCode || requestId || cozeMessage || bodySnippet)
+      if (!isCoze) return null
+      return { status, errorCode, requestId, cozeMessage, bodySnippet }
+    })()
+    const msg = (() => {
+      if (coze) {
+        const pieces = [baseMsg]
+        if (typeof coze.status === "number" && Number.isFinite(coze.status)) pieces.push(`HTTP ${coze.status}`)
+        if (typeof coze.errorCode === "string" && coze.errorCode.trim()) pieces.push(`code=${coze.errorCode.trim()}`)
+        if (typeof coze.requestId === "string" && coze.requestId.trim()) pieces.push(`requestId=${coze.requestId.trim()}`)
+        const joined = pieces.join(" | ")
+        return joined.length > 600 ? `${joined.slice(0, 600)}...` : joined
+      }
+      return baseMsg
+    })()
+    const payloadTraceId = typeof (payload as any)?.traceId === "string" && String((payload as any).traceId).trim() ? String((payload as any).traceId).trim() : "server"
     logger.error({
       event: "coze_storyboard_job_failed",
       module: "coze",
-      traceId: "server",
+      traceId: payloadTraceId,
       message: "Coze 故事生成任务失败",
       jobId,
       type,
       errorName: typeof anyErr?.name === "string" ? anyErr.name : undefined,
       errorMessage: msg,
-      stack: typeof anyErr?.stack === "string" ? anyErr.stack : undefined
+      stack: typeof anyErr?.stack === "string" ? anyErr.stack : undefined,
+      cozeStatus: coze?.status ?? undefined,
+      cozeErrorCode: coze?.errorCode ?? undefined,
+      cozeRequestId: coze?.requestId ?? undefined,
+      cozeErrorMessage: coze?.cozeMessage ?? undefined,
+      cozeBodySnippet: coze?.bodySnippet ?? undefined
     })
     const errSnap: CozeJobSnapshot = { ...cur, status: "error", stage: "error", finishedAt: Date.now(), errorMessage: msg }
     await persist(jobId, errSnap, { errorMessage: msg, finished: true })

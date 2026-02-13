@@ -8,6 +8,7 @@ import { makeApiErr, makeApiOk } from "@/shared/api"
 import { logger } from "@/shared/logger"
 import { getTraceId } from "@/shared/trace"
 import { storyboards } from "@/shared/schema/story"
+import { splitPromptFrames } from "@/shared/promptFrames"
 import { mergeStoryboardFrames, mergeStoryboardVideoInfo } from "@/server/shared/storyboard/storyboardAssets"
 
 const inputSchema = z.object({
@@ -183,6 +184,10 @@ export async function POST(req: Request): Promise<Response> {
     const normalizedMode = output.mode ? output.mode : null
     const normalizedVideoPrompt = output.video_prompt ? output.video_prompt : null
 
+    const splitPrompts = splitPromptFrames(normalizedFirstFramePrompt, normalizedLastFramePrompt)
+    const persistedFirstPrompt = splitPrompts.first || null
+    const persistedLastPrompt = splitPrompts.last || null
+
     const existing = await db
       .select({ frames: storyboards.frames, videoInfo: storyboards.videoInfo })
       .from(storyboards)
@@ -190,11 +195,11 @@ export async function POST(req: Request): Promise<Response> {
       .limit(1)
     const nextFrames = mergeStoryboardFrames(existing[0]?.frames as any, {
       first: {
-        prompt: normalizedFirstFramePrompt,
+        prompt: persistedFirstPrompt,
         url: normalizedFirstFrameUrl
       },
       last: {
-        prompt: normalizedLastFramePrompt
+        prompt: persistedLastPrompt
       }
     })
     const nextVideoInfo = mergeStoryboardVideoInfo(existing[0]?.videoInfo as any, {

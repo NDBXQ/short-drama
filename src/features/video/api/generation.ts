@@ -23,6 +23,36 @@ export async function generateStoryboardText(outlineId: string, outline: string,
   }
 }
 
+export async function enqueueStoryboardTextJob(params: {
+  outlineId: string
+  outline: string
+  original: string
+  traceId?: string
+}): Promise<{ jobId: string; status: string }> {
+  const res = await fetch("/api/coze/storyboard/generate-storyboard-text", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(params.traceId ? { "x-trace-id": params.traceId } : {})
+    },
+    body: JSON.stringify({
+      outlineId: params.outlineId,
+      outline: params.outline,
+      original: params.original,
+      async: true
+    })
+  })
+
+  const json = (await res.json()) as ApiOk<{ jobId: string; status: string }> | ApiErr
+  if (!res.ok || !json || (json as ApiErr).ok === false) {
+    const errJson = json as ApiErr
+    throw new Error(errJson?.error?.message ?? `HTTP ${res.status}`)
+  }
+  const data = (json as ApiOk<{ jobId: string; status: string }>).data
+  if (!data?.jobId) throw new Error("缺少 jobId")
+  return { jobId: data.jobId, status: data.status }
+}
+
 /**
  * Fetch storyboards for a given story and outline.
  */

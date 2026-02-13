@@ -5,6 +5,7 @@ import styles from "./StoryboardDetailsModal.module.css"
 import { createPreviewSvgDataUrl } from "../../utils/svgUtils"
 import { extractReferenceImagePrompts } from "../../utils/referenceImagePrompts"
 import { StoryboardAssetRow, type StoryboardAssetRowItem } from "./StoryboardAssetRow"
+import { splitPromptFrames } from "@/shared/promptFrames"
 
 type PreviewRow = { id: string; name: string; url: string; thumbnailUrl?: string | null; category?: string; storyboardId?: string | null; isGlobal?: boolean; description?: string | null; prompt?: string | null }
 
@@ -60,10 +61,11 @@ export function StoryboardDetailsModal({ open, item, previews, onClose, onPrevie
   const title = useMemo(() => `镜头 ${item.scene_no} · 分镜详情`, [item.scene_no])
 
   const resetEditableContent = useCallback(() => {
+    const split = splitPromptFrames(item.frames?.first?.prompt ?? "", item.frames?.last?.prompt ?? "")
     const nextBaseline = {
       storyboardText: (item.storyboard_text ?? "").trim(),
-      firstPrompt: (item.frames?.first?.prompt ?? "").trim(),
-      lastPrompt: (item.frames?.last?.prompt ?? "").trim(),
+      firstPrompt: split.first,
+      lastPrompt: split.last,
       videoPrompt: (item.videoInfo?.prompt ?? "").trim()
     }
     baselineRef.current = nextBaseline
@@ -166,8 +168,11 @@ export function StoryboardDetailsModal({ open, item, previews, onClose, onPrevie
     const baseline = baselineRef.current
     if (!baseline) return
     const storyboardText = (storyboardTextRef.current?.innerText ?? "").trim()
-    const firstPrompt = (firstPromptRef.current?.innerText ?? "").trim()
-    const lastPrompt = (lastPromptRef.current?.innerText ?? "").trim()
+    const rawFirstPrompt = (firstPromptRef.current?.innerText ?? "").trim()
+    const rawLastPrompt = (lastPromptRef.current?.innerText ?? "").trim()
+    const split = splitPromptFrames(rawFirstPrompt, rawLastPrompt)
+    const firstPrompt = split.first
+    const lastPrompt = split.last
     const videoPrompt = (videoPromptRef.current?.innerText ?? "").trim()
     setDirty(
       storyboardText !== baseline.storyboardText ||
@@ -182,8 +187,11 @@ export function StoryboardDetailsModal({ open, item, previews, onClose, onPrevie
     const baseline = baselineRef.current
     if (!baseline) return
     const storyboardText = (storyboardTextRef.current?.innerText ?? "").trim()
-    const firstPrompt = (firstPromptRef.current?.innerText ?? "").trim()
-    const lastPrompt = (lastPromptRef.current?.innerText ?? "").trim()
+    const rawFirstPrompt = (firstPromptRef.current?.innerText ?? "").trim()
+    const rawLastPrompt = (lastPromptRef.current?.innerText ?? "").trim()
+    const split = splitPromptFrames(rawFirstPrompt, rawLastPrompt)
+    const firstPrompt = split.first
+    const lastPrompt = split.last
     const videoPrompt = (videoPromptRef.current?.innerText ?? "").trim()
     const regenerateAfterSave =
       storyboardText !== baseline.storyboardText &&

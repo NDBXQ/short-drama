@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, isNull } from "drizzle-orm"
 import { getDb } from "coze-coding-dev-sdk"
 import { generateImageByCoze } from "@/features/coze/imageClient"
 import { downloadImage, generateThumbnail } from "@/server/lib/thumbnail"
@@ -85,6 +85,7 @@ async function runOneJob(payload: ReferenceImageJobPayload, snapshot: ReferenceI
       return
     }
     try {
+      const storyboardMatch = payload.storyboardId ? eq(generatedImages.storyboardId, payload.storyboardId) : isNull(generatedImages.storyboardId)
       const existing =
         p.generatedImageId
           ? (
@@ -93,7 +94,8 @@ async function runOneJob(payload: ReferenceImageJobPayload, snapshot: ReferenceI
                   id: generatedImages.id,
                   url: generatedImages.url,
                   thumbnailUrl: generatedImages.thumbnailUrl,
-                  prompt: generatedImages.prompt
+                  prompt: generatedImages.prompt,
+                  storyboardId: generatedImages.storyboardId
                 })
                 .from(generatedImages)
                 .where(and(eq(generatedImages.id, p.generatedImageId), eq(generatedImages.storyId, payload.storyId)))
@@ -105,10 +107,11 @@ async function runOneJob(payload: ReferenceImageJobPayload, snapshot: ReferenceI
                   id: generatedImages.id,
                   url: generatedImages.url,
                   thumbnailUrl: generatedImages.thumbnailUrl,
-                  prompt: generatedImages.prompt
+                  prompt: generatedImages.prompt,
+                  storyboardId: generatedImages.storyboardId
                 })
                 .from(generatedImages)
-                .where(and(eq(generatedImages.storyId, payload.storyId), eq(generatedImages.name, p.name), eq(generatedImages.category, category)))
+                .where(and(eq(generatedImages.storyId, payload.storyId), storyboardMatch, eq(generatedImages.name, p.name), eq(generatedImages.category, category)))
                 .orderBy(desc(generatedImages.createdAt))
                 .limit(1)
             )[0]
@@ -160,7 +163,7 @@ async function runOneJob(payload: ReferenceImageJobPayload, snapshot: ReferenceI
             description: p.description ?? p.prompt,
             name: p.name,
             category,
-            storyboardId: payload.storyboardId
+            storyboardId: existing.storyboardId
           })
           .where(eq(generatedImages.id, existing.id))
           .returning()
