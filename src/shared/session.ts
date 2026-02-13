@@ -8,6 +8,7 @@ type SessionPayload = {
   userId: string
   account: string
   exp: number
+  tokenVersion?: number
 }
 
 /**
@@ -125,13 +126,14 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
  * @returns {Promise<string>} token 字符串
  */
 export async function createSessionToken(
-  input: { userId: string; account: string; ttlSeconds: number },
+  input: { userId: string; account: string; ttlSeconds: number; tokenVersion?: number },
   traceId: string
 ): Promise<string> {
   const payload: SessionPayload = {
     userId: input.userId,
     account: input.account,
-    exp: Math.floor(Date.now() / 1000) + input.ttlSeconds
+    exp: Math.floor(Date.now() / 1000) + input.ttlSeconds,
+    tokenVersion: typeof input.tokenVersion === "number" && Number.isFinite(input.tokenVersion) ? input.tokenVersion : 1
   }
 
   const secret = getSessionSecret(traceId)
@@ -169,8 +171,8 @@ export async function verifySessionToken(
 
     if (!payload?.userId || !payload?.account || typeof payload?.exp !== "number") return null
     if (payload.exp <= Math.floor(Date.now() / 1000)) return null
-
-    return payload
+    const tv = typeof (payload as any).tokenVersion === "number" ? Number((payload as any).tokenVersion) : 1
+    return { ...payload, tokenVersion: Number.isFinite(tv) ? tv : 1 }
   } catch {
     return null
   }

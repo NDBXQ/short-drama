@@ -8,23 +8,12 @@ import { logger } from "@/shared/logger"
 import { telemetryEvents, iterationTasks } from "@/shared/schema"
 import { ensureTelemetryTable } from "@/server/db/ensureTelemetryTable"
 import { ensureIterationTasksTable } from "@/server/db/ensureIterationTasksTable"
-import { getSessionFromRequest } from "@/shared/session"
+import { requireAdmin as requireSuperAdmin } from "@/server/domains/admin/services/adminGuard"
 
 export const runtime = "nodejs"
 
-const adminAccount = (process.env.ADMIN_ACCOUNT ?? "admin").trim()
-const adminPanelEnabled = process.env.ADMIN_PANEL_ENABLED === "1" || process.env.NODE_ENV !== "production"
-
 function deny(traceId: string, code: string, message: string, status: number): Response {
   return NextResponse.json(makeApiErr(traceId, code, message), { status })
-}
-
-async function requireAdmin(req: NextRequest, traceId: string): Promise<{ userId: string; account: string } | Response> {
-  if (!adminPanelEnabled) return deny(traceId, "ADMIN_PANEL_DISABLED", "管理员后台未启用", 404)
-  const session = await getSessionFromRequest(req)
-  if (!session?.userId) return deny(traceId, "AUTH_REQUIRED", "未登录或登录已过期", 401)
-  if (session.account !== adminAccount) return deny(traceId, "ADMIN_REQUIRED", "需要管理员权限", 403)
-  return { userId: session.userId, account: session.account }
 }
 
 const listQuerySchema = z.object({
@@ -163,7 +152,7 @@ function buildTasks(stats: FunnelStats): Array<{ title: string; spec: Record<str
 
 export async function GET(req: NextRequest): Promise<Response> {
   const traceId = getTraceId(req.headers)
-  const admin = await requireAdmin(req, traceId)
+  const admin = await requireSuperAdmin(req, traceId)
   if (admin instanceof Response) return admin
 
   const url = new URL(req.url)
@@ -193,7 +182,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
 export async function POST(req: NextRequest): Promise<Response> {
   const traceId = getTraceId(req.headers)
-  const admin = await requireAdmin(req, traceId)
+  const admin = await requireSuperAdmin(req, traceId)
   if (admin instanceof Response) return admin
 
   const parsed = generateBodySchema.safeParse(await req.json().catch(() => null))

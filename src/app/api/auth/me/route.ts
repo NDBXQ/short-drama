@@ -69,7 +69,7 @@ export async function GET(req: Request): Promise<Response> {
   } catch (err) {
     if (err instanceof ServiceError) {
       let status = 500
-      if (["AUTH_UNAUTHENTICATED", "AUTH_INVALID_SESSION", "AUTH_USER_NOT_FOUND"].includes(err.code)) {
+      if (["AUTH_UNAUTHENTICATED", "AUTH_INVALID_SESSION", "AUTH_USER_NOT_FOUND", "AUTH_DISABLED"].includes(err.code)) {
         status = 401
       }
       const body: ApiErr = {

@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm"
 import { getDb } from "coze-coding-dev-sdk"
-import { users } from "@/shared/schema/auth"
+import { auditLogs, userSecurity, users } from "@/shared/schema/auth"
 import { generatedAudios, generatedImages, ttsSpeakerSamples } from "@/shared/schema/generation"
 import { jobs } from "@/shared/schema/jobs"
 import { publicResources, sharedResources } from "@/shared/schema/library"
@@ -8,7 +8,7 @@ import { stories, storyOutlines, storyboards } from "@/shared/schema/story"
 import { iterationTasks, telemetryEvents } from "@/shared/schema/telemetry"
 import { logger } from "@/shared/logger"
 
-const ENSURE_VERSION = 3
+const ENSURE_VERSION = 4
 
 export async function ensurePublicSchema(): Promise<void> {
   const g = globalThis as any
@@ -19,6 +19,8 @@ export async function ensurePublicSchema(): Promise<void> {
     const start = performance.now()
     const db = await getDb({
       users,
+      userSecurity,
+      auditLogs,
       stories,
       storyOutlines,
       storyboards,
@@ -135,6 +137,39 @@ export async function ensurePublicSchema(): Promise<void> {
         created_at timestamptz not null default now(),
         updated_at timestamptz,
         password text not null
+      );
+    `)
+
+    await db.execute(sql`
+      create table if not exists public.user_security (
+        user_id text primary key references public.users(id) on delete cascade,
+        role_key text not null default 'user',
+        token_version integer not null default 1,
+        last_login_at timestamptz,
+        password_updated_at timestamptz,
+        failed_login_count integer not null default 0,
+        locked_until timestamptz,
+        disabled_at timestamptz,
+        disabled_reason text,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz
+      );
+    `)
+
+    await db.execute(sql`
+      create table if not exists public.audit_logs (
+        id text primary key default gen_random_uuid(),
+        actor_user_id text,
+        action text not null,
+        target_type text not null default 'user',
+        target_id text,
+        target_user_id text,
+        before jsonb not null default '{}'::jsonb,
+        after jsonb not null default '{}'::jsonb,
+        ip text,
+        user_agent text,
+        trace_id text,
+        created_at timestamptz not null default now()
       );
     `)
 
@@ -335,6 +370,10 @@ export async function ensurePublicSchema(): Promise<void> {
     await db.execute(sql`create index if not exists generated_audios_story_id_idx on public.generated_audios(story_id);`)
     await db.execute(sql`create index if not exists jobs_story_id_idx on public.jobs(story_id);`)
     await db.execute(sql`create index if not exists telemetry_events_trace_id_idx on public.telemetry_events(trace_id);`)
+    await db.execute(sql`create index if not exists user_security_role_key_idx on public.user_security(role_key);`)
+    await db.execute(sql`create index if not exists audit_logs_created_at_idx on public.audit_logs(created_at);`)
+    await db.execute(sql`create index if not exists audit_logs_action_idx on public.audit_logs(action);`)
+    await db.execute(sql`create index if not exists audit_logs_target_id_idx on public.audit_logs(target_id);`)
 
     const durationMs = Math.round(performance.now() - start)
     logger.info({ event: "db_public_schema_ready", module: "db", traceId: "startup", message: "public schema 已就绪", durationMs })

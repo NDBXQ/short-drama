@@ -1,15 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { makeApiErr, makeApiOk } from "@/shared/api"
-import { getSessionFromRequest } from "@/shared/session"
+import { makeApiOk } from "@/shared/api"
 import { getTraceId } from "@/shared/trace"
 import { logger } from "@/shared/logger"
+import { requireAdmin } from "@/server/domains/admin/services/adminGuard"
 import fs from "node:fs/promises"
 import path from "node:path"
 
 export const runtime = "nodejs"
-
-const adminAccount = (process.env.ADMIN_ACCOUNT ?? "admin").trim()
-const adminPanelEnabled = process.env.ADMIN_PANEL_ENABLED === "1" || process.env.NODE_ENV !== "production"
 
 const METHOD_RE = /export\s+(?:async\s+)?function\s+(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s*\(/g
 
@@ -48,12 +45,8 @@ function methodsFromSource(src: string): string[] {
 
 export async function GET(req: NextRequest): Promise<Response> {
   const traceId = getTraceId(req.headers)
-
-  if (!adminPanelEnabled) return NextResponse.json(makeApiErr(traceId, "ADMIN_PANEL_DISABLED", "管理员后台未启用"), { status: 404 })
-
-  const session = await getSessionFromRequest(req)
-  if (!session?.userId) return NextResponse.json(makeApiErr(traceId, "AUTH_REQUIRED", "未登录或登录已过期"), { status: 401 })
-  if (session.account !== adminAccount) return NextResponse.json(makeApiErr(traceId, "ADMIN_REQUIRED", "需要管理员权限"), { status: 403 })
+  const admin = await requireAdmin(req, traceId)
+  if (admin instanceof Response) return admin
 
   const rootCandidates = [path.join(process.cwd(), "src", "app", "api"), path.join(process.cwd(), "app", "api")]
   const apiRoot = await (async () => {

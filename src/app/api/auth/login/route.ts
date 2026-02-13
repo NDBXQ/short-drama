@@ -93,6 +93,7 @@ export async function POST(req: Request): Promise<Response> {
     if (err instanceof ServiceError) {
       let status = 500
       if (err.code === "AUTH_INVALID_CREDENTIALS") status = 401
+      if (err.code === "AUTH_LOCKED" || err.code === "AUTH_DISABLED") status = 403
       
       const body: ApiErr = {
         ok: false,

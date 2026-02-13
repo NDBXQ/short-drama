@@ -51,10 +51,11 @@ export class UserManager {
   async getUserByAccount(account: string): Promise<User | null> {
     await ensurePublicSchema()
     const db = await getDb({ users })
+    const acc = account.trim()
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, toAccountEmailKey(account)))
+      .where(eq(users.name, acc))
     return user || null
   }
 

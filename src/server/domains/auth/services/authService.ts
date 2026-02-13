@@ -1,9 +1,14 @@
 import "server-only"
 
-import { InvalidCredentialsError, userManager } from "@/features/auth/user-manager"
+import { userManager } from "@/features/auth/user-manager"
+import { hashPassword, verifyPassword } from "@/features/auth/password"
 import { logger } from "@/shared/logger"
 import { createSessionToken, verifySessionToken } from "@/shared/session"
 import { ServiceError } from "@/server/shared/errors"
+import { ensurePublicSchema } from "@/server/db/ensurePublicSchema"
+import { getDb } from "@/server/db/getDb"
+import { userSecurity, users } from "@/shared/schema"
+import { eq } from "drizzle-orm"
 
 export interface LoginResult {
   user: { id: string; account: string }
@@ -27,12 +32,137 @@ export class AuthService {
       const sessionTtlSeconds = 60 * 60 * 24 * 7
       const isTestAccount = account === "test" && password === "test"
 
-      const result = isTestAccount
-        ? { user: { id: "test-user", name: "test" }, created: false }
-        : await userManager.loginOrCreate(account, password)
+      if (isTestAccount) {
+        const token = await createSessionToken({ userId: "test-user", account: "test", ttlSeconds: sessionTtlSeconds, tokenVersion: 1 }, traceId)
+        const durationMs = Date.now() - start
+        logger.info({
+          event: "auth_login_success",
+          module: "auth",
+          traceId,
+          message: "登录成功（test）",
+          durationMs,
+          userId: "test-user",
+          created: false
+        })
+        return { user: { id: "test-user", account: "test" }, created: false, token, sessionTtlSeconds }
+      }
+
+      const acc = account.trim()
+      const now = new Date()
+      const maxFailedAttempts = Math.max(1, Math.min(20, Number(process.env.AUTH_MAX_FAILED_ATTEMPTS ?? "5") || 5))
+      const lockMinutes = Math.max(1, Math.min(24 * 60, Number(process.env.AUTH_LOCK_MINUTES ?? "15") || 15))
+
+      await ensurePublicSchema()
+      const db = await getDb({ users, userSecurity })
+
+      const found = await db.select().from(users).where(eq(users.name, acc)).limit(1)
+      const existing = found[0]
+
+      if (!existing) {
+        const passwordHash = await hashPassword(password)
+        const [created] = await db
+          .insert(users)
+          .values({
+            name: acc,
+            email: null,
+            password: passwordHash,
+            isActive: true,
+            updatedAt: now
+          })
+          .returning()
+
+        if (!created?.id) throw new Error("create user failed")
+
+        await db
+          .insert(userSecurity)
+          .values({
+            userId: created.id,
+            roleKey: "user",
+            tokenVersion: 1,
+            lastLoginAt: now,
+            passwordUpdatedAt: now,
+            failedLoginCount: 0,
+            lockedUntil: null,
+            createdAt: now,
+            updatedAt: now
+          })
+          .onConflictDoNothing()
+
+        const token = await createSessionToken({ userId: created.id, account: created.name, ttlSeconds: sessionTtlSeconds, tokenVersion: 1 }, traceId)
+        const durationMs = Date.now() - start
+        logger.info({
+          event: "auth_login_success",
+          module: "auth",
+          traceId,
+          message: "登录成功（自动注册）",
+          durationMs,
+          userId: created.id,
+          created: true
+        })
+
+        return { user: { id: created.id, account: created.name }, created: true, token, sessionTtlSeconds }
+      }
+
+      if (!existing.isActive) {
+        throw new ServiceError("AUTH_DISABLED", "账号已禁用")
+      }
+
+      const secRows = await db.select().from(userSecurity).where(eq(userSecurity.userId, existing.id)).limit(1)
+      const sec = secRows[0]
+
+      if (sec?.lockedUntil && sec.lockedUntil.getTime() > now.getTime()) {
+        throw new ServiceError("AUTH_LOCKED", "账号已锁定，请稍后重试")
+      }
+
+      const ok = await verifyPassword(password, existing.password)
+      if (!ok) {
+        const nextFailed = (sec?.failedLoginCount ?? 0) + 1
+        const shouldLock = nextFailed >= maxFailedAttempts
+        const lockedUntil = shouldLock ? new Date(now.getTime() + lockMinutes * 60 * 1000) : null
+
+        await db
+          .insert(userSecurity)
+          .values({
+            userId: existing.id,
+            failedLoginCount: nextFailed,
+            lockedUntil,
+            updatedAt: now
+          })
+          .onConflictDoUpdate({
+            target: userSecurity.userId,
+            set: { failedLoginCount: nextFailed, lockedUntil, updatedAt: now }
+          })
+
+        if (shouldLock) throw new ServiceError("AUTH_LOCKED", "账号已锁定，请稍后重试")
+        throw new ServiceError("AUTH_INVALID_CREDENTIALS", "账号或密码错误")
+      }
+
+      let passwordUpdatedAt = sec?.passwordUpdatedAt ?? null
+      if (!existing.password.startsWith("scrypt$")) {
+        const upgradedHash = await hashPassword(password)
+        const upgraded = await userManager.updateUser(existing.id, { password: upgradedHash })
+        if (upgraded) passwordUpdatedAt = now
+      }
+
+      const currentTokenVersion = sec?.tokenVersion ?? 1
+      await db
+        .insert(userSecurity)
+        .values({
+          userId: existing.id,
+          tokenVersion: currentTokenVersion,
+          lastLoginAt: now,
+          passwordUpdatedAt: passwordUpdatedAt ?? now,
+          failedLoginCount: 0,
+          lockedUntil: null,
+          updatedAt: now
+        })
+        .onConflictDoUpdate({
+          target: userSecurity.userId,
+          set: { lastLoginAt: now, failedLoginCount: 0, lockedUntil: null, passwordUpdatedAt: passwordUpdatedAt ?? now, updatedAt: now }
+        })
 
       const token = await createSessionToken(
-        { userId: result.user.id, account: result.user.name, ttlSeconds: sessionTtlSeconds },
+        { userId: existing.id, account: existing.name, ttlSeconds: sessionTtlSeconds, tokenVersion: currentTokenVersion },
         traceId
       )
 
@@ -43,28 +173,19 @@ export class AuthService {
         traceId,
         message: "登录成功",
         durationMs,
-        userId: result.user.id,
-        created: result.created
+        userId: existing.id,
+        created: false
       })
 
       return {
-        user: { id: result.user.id, account: result.user.name },
-        created: result.created,
+        user: { id: existing.id, account: existing.name },
+        created: false,
         token,
         sessionTtlSeconds
       }
     } catch (err) {
       const durationMs = Date.now() - start
-      if (err instanceof InvalidCredentialsError) {
-        logger.warn({
-          event: "auth_login_invalid_credentials",
-          module: "auth",
-          traceId,
-          message: "登录失败：账号或密码错误",
-          durationMs
-        })
-        throw new ServiceError("AUTH_INVALID_CREDENTIALS", "账号或密码错误")
-      }
+      if (err instanceof ServiceError) throw err
 
       const anyErr = err as {
         message?: string
@@ -187,6 +308,36 @@ export class AuthService {
         throw new ServiceError("AUTH_USER_NOT_FOUND", "用户不存在，请重新登录")
       }
 
+      if (!user.isActive) {
+        logger.warn({
+          event: "auth_me_user_disabled",
+          module: "auth",
+          traceId,
+          message: "账号已禁用",
+          durationMs,
+          userId: user.id
+        })
+        throw new ServiceError("AUTH_DISABLED", "账号已禁用")
+      }
+
+      await ensurePublicSchema()
+      const db = await getDb({ userSecurity })
+      const secRows = await db.select().from(userSecurity).where(eq(userSecurity.userId, user.id)).limit(1)
+      const sec = secRows[0]
+      const tv = sec?.tokenVersion ?? 1
+      const tokenTv = session.tokenVersion ?? 1
+      if (tokenTv !== tv) {
+        logger.warn({
+          event: "auth_me_token_revoked",
+          module: "auth",
+          traceId,
+          message: "会话已失效（tokenVersion 不匹配）",
+          durationMs,
+          userId: user.id
+        })
+        throw new ServiceError("AUTH_INVALID_SESSION", "登录已失效，请重新登录")
+      }
+
       logger.info({
         event: "auth_me_success",
         module: "auth",
@@ -200,6 +351,8 @@ export class AuthService {
     } catch (err) {
       const durationMs = Date.now() - start
       const anyErr = err as { name?: string; message?: string; stack?: string; code?: string }
+
+      if (err instanceof ServiceError) throw err
 
       logger.error({
         event: "auth_me_failed",

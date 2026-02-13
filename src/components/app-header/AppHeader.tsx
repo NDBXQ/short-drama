@@ -47,7 +47,7 @@ export function AppHeader({ variant = "app", autoHide }: AppHeaderProps): ReactE
 
     ;(async (): Promise<void> => {
       try {
-        const res = await fetch("/api/auth/me", { method: "GET" })
+        const res = await fetch("/api/auth/me?refresh=1", { method: "GET" })
         const json = (await res.json()) as MeResult
         if (!cancelled) setMe(json)
       } catch {
