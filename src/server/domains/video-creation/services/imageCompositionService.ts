@@ -11,9 +11,12 @@ import { createCozeS3Storage } from "@/server/integrations/storage/s3"
 import { logger } from "@/shared/logger"
 import { generatedImages } from "@/shared/schema/generation"
 import { stories, storyOutlines, storyboards } from "@/shared/schema/story"
+import { publicResources } from "@/shared/schema"
 import { makeSafeObjectKeySegment } from "@/shared/utils/stringUtils"
 import { mergeStoryboardFrames } from "@/server/shared/storyboard/storyboardAssets"
 import { resolveStorageUrl } from "@/shared/storageUrl"
+import { getS3Storage } from "@/shared/storage"
+import { ensureSmoothLibraryMigration } from "@/shared/libraryMigration"
 
 import { ServiceError } from "@/server/shared/errors"
 
@@ -25,6 +28,58 @@ export interface ComposeImageResult {
 }
 
 export class ImageCompositionService {
+  private static async resolveCozeAccessibleUrl(input: { userId: string; traceId: string; url: string }): Promise<string | null> {
+    const raw = typeof input.url === "string" ? input.url.trim() : ""
+    if (!raw) return null
+    if (raw.startsWith("http") || raw.startsWith("data:")) return raw
+
+    if (raw.startsWith("/api/library/public-resources/file/")) {
+      const parsed = new URL(raw, "http://local")
+      const segments = parsed.pathname.split("/").filter(Boolean)
+      const id = segments[segments.length - 1] ?? ""
+      if (!id) return null
+      const kind = parsed.searchParams.get("kind") === "preview" ? "preview" : "original"
+
+      await ensureSmoothLibraryMigration(input.userId, input.traceId)
+
+      const db = await getDb({ publicResources })
+      const rows = await db
+        .select({
+          id: publicResources.id,
+          userId: publicResources.userId,
+          previewUrl: publicResources.previewUrl,
+          originalUrl: publicResources.originalUrl,
+          previewStorageKey: publicResources.previewStorageKey,
+          originalStorageKey: publicResources.originalStorageKey
+        })
+        .from(publicResources)
+        .where(eq(publicResources.id, id))
+        .limit(1)
+
+      const row = rows[0]
+      if (!row) return null
+      if (row.userId !== input.userId) return null
+
+      const storageKey = kind === "preview" ? row.previewStorageKey : row.originalStorageKey
+      const fallbackUrl = kind === "preview" ? row.previewUrl : (row.originalUrl || row.previewUrl)
+
+      if (!storageKey) {
+        const fb = typeof fallbackUrl === "string" ? fallbackUrl.trim() : ""
+        return fb && (fb.startsWith("http") || fb.startsWith("data:")) ? fb : null
+      }
+
+      const storage = getS3Storage()
+      try {
+        return await resolveStorageUrl(storage, storageKey)
+      } catch {
+        const fb = typeof fallbackUrl === "string" ? fallbackUrl.trim() : ""
+        return fb && (fb.startsWith("http") || fb.startsWith("data:")) ? fb : null
+      }
+    }
+
+    return null
+  }
+
   static async composeImage(
     userId: string,
     storyboardId: string,
@@ -108,9 +163,13 @@ export class ImageCompositionService {
 
     const candidates =
       referenceImages && referenceImages.length > 0
-        ? referenceImages
-            .map((p) => ({ name: p.name, category: "reference", url: p.url, createdAt: new Date() }))
-            .filter((p) => typeof p.url === "string" && (p.url.startsWith("http") || p.url.startsWith("data:")))
+        ? (await Promise.all(
+            referenceImages.map(async (p) => {
+              const resolvedUrl = await ImageCompositionService.resolveCozeAccessibleUrl({ userId, traceId, url: p.url })
+              if (!resolvedUrl) return null
+              return { name: p.name, category: "reference", url: resolvedUrl, createdAt: new Date() }
+            })
+          )).filter((v): v is { name: string; category: string; url: string; createdAt: Date } => Boolean(v))
         : await db
             .select({
               id: generatedImages.id,

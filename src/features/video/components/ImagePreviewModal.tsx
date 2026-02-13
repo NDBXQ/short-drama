@@ -1,4 +1,5 @@
 import { type ReactElement, useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import styles from "./ImagePreviewModal.module.css"
 import { PreviewPane } from "./ImagePreviewModalParts/PreviewPane"
 import { SidePanel } from "./ImagePreviewModalParts/SidePanel"
@@ -116,7 +117,9 @@ function ImagePreviewModalInner({
 
   const stableStoryboardId = typeof storyboardId === "string" ? storyboardId.trim() : ""
 
-  return (
+  const canPortal = typeof document !== "undefined"
+
+  const content = (
     <div className={styles.overlay} onClick={onClose} role="presentation">
       <div className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={currentEntityName}>
         <PreviewPane
@@ -200,4 +203,6 @@ function ImagePreviewModalInner({
       </div>
     </div>
   )
+
+  return canPortal ? createPortal(content, document.body) : content
 }

@@ -75,6 +75,6 @@ export async function runScriptFlow({
         })
       }
     }),
-    2
+    20
   )
 }

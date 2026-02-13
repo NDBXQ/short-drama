@@ -120,8 +120,7 @@ async function runOneJob(payload: ReferenceImageJobPayload, snapshot: ReferenceI
         Boolean(existing) &&
         !payload.forceRegenerate &&
         typeof existing?.url === "string" &&
-        existing.url.length > 0 &&
-        (existing.prompt ?? "") === p.prompt
+        existing.url.length > 0
 
       if (shouldSkip) {
         await updateResult(index, {

@@ -66,7 +66,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const db = await getDb({ stories, storyOutlines, storyboards })
     const rows = await db
-      .select({ shotCut: storyboards.shotCut, storyId: storyOutlines.storyId })
+      .select({ shotCut: storyboards.shotCut, storyId: storyOutlines.storyId, style: stories.shotStyle })
       .from(storyboards)
       .innerJoin(storyOutlines, eq(storyboards.outlineId, storyOutlines.id))
       .innerJoin(stories, eq(storyOutlines.storyId, stories.id))
@@ -76,8 +76,10 @@ export async function POST(req: Request): Promise<Response> {
     if (rows.length === 0) {
       return NextResponse.json(makeApiErr(traceId, "STORYBOARD_NOT_FOUND", "未找到可用的分镜"), { status: 404 })
     }
-    effectiveDemand = String(Boolean(rows[0]?.shotCut)) === "true" ? "需要切镜" : "无需切镜"
-    storyIdForJob = typeof (rows[0] as any)?.storyId === "string" ? String((rows[0] as any).storyId) : undefined
+    const style = typeof rows[0]?.style === "string" && rows[0].style.trim() ? rows[0].style.trim() : "realistic"
+    const cutLabel = Boolean(rows[0]?.shotCut) ? "需要切镜" : "无需切镜"
+    effectiveDemand = `风格：${style}\n是否切镜：${cutLabel}`
+    storyIdForJob = typeof rows[0]?.storyId === "string" ? rows[0].storyId : undefined
   }
 
   const asyncMode = parsed.data.async ?? false

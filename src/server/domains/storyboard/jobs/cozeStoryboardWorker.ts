@@ -262,24 +262,34 @@ class CozeStoryboardDbWorker {
 
   private async runLoop(): Promise<void> {
     try {
-      while (true) {
-        const types = [COZE_GENERATE_OUTLINE_JOB_TYPE, COZE_GENERATE_STORYBOARD_TEXT_JOB_TYPE, COZE_GENERATE_SCRIPT_JOB_TYPE] as const
-        let claimed: { jobId: string; payload: Record<string, unknown>; snapshot: Record<string, unknown> } | null = null
-        let claimedType: string | null = null
+      const maxConcurrency = 20
+      const types = [COZE_GENERATE_OUTLINE_JOB_TYPE, COZE_GENERATE_STORYBOARD_TEXT_JOB_TYPE, COZE_GENERATE_SCRIPT_JOB_TYPE] as const
 
+      const claimOne = async (): Promise<{ type: string; jobId: string; payload: Record<string, unknown>; snapshot: Record<string, unknown> } | null> => {
         for (const t of types) {
           const got = await tryClaimNextJob(t)
-          if (got) {
-            claimed = got
-            claimedType = t
-            break
-          }
+          if (!got) continue
+          const row = await getJobById(got.jobId)
+          if (!row) continue
+          return { type: t, jobId: got.jobId, payload: row.payload, snapshot: row.snapshot }
+        }
+        return null
+      }
+
+      const inFlight = new Set<Promise<void>>()
+
+      while (true) {
+        while (inFlight.size < maxConcurrency) {
+          const claimed = await claimOne()
+          if (!claimed) break
+          const p = runJob(claimed.type, claimed.jobId, claimed.payload, claimed.snapshot).finally(() => {
+            inFlight.delete(p)
+          })
+          inFlight.add(p)
         }
 
-        if (!claimed || !claimedType) break
-        const row = await getJobById(claimed.jobId)
-        if (!row) continue
-        await runJob(claimedType, claimed.jobId, row.payload, row.snapshot)
+        if (inFlight.size === 0) break
+        await Promise.race(Array.from(inFlight))
       }
     } finally {
       this.running = false
@@ -290,10 +300,10 @@ class CozeStoryboardDbWorker {
 export function kickCozeStoryboardWorker(): void {
   const g = globalThis as any
   const existing = g.__cozeStoryboardDbWorker as any
-  if (existing && typeof existing === "object" && existing.__version !== 1 && existing.running === true) existing.running = false
-  if (!existing || existing.__version !== 1) {
+  if (existing && typeof existing === "object" && existing.__version !== 2 && existing.running === true) existing.running = false
+  if (!existing || existing.__version !== 2) {
     const worker = new CozeStoryboardDbWorker() as any
-    worker.__version = 1
+    worker.__version = 2
     g.__cozeStoryboardDbWorker = worker
   }
   ;(g.__cozeStoryboardDbWorker as CozeStoryboardDbWorker).kick()

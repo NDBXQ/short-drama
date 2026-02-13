@@ -1,8 +1,8 @@
 import { getDb } from "coze-coding-dev-sdk"
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, inArray } from "drizzle-orm"
 import { generatedImages } from "@/shared/schema/generation"
 import { stories, storyOutlines, storyboards, type StoryboardScriptContent } from "@/shared/schema/story"
-import { buildEmptyScript, renameEntityInScript, withReferenceAsset } from "@/server/domains/video-creation/lib/storyboardScript"
+import { buildEmptyScript, withReferenceAsset } from "@/server/domains/video-creation/lib/storyboardScript"
 
 export async function importVideoCreationScriptAsset(input: {
   userId: string
@@ -16,6 +16,8 @@ export async function importVideoCreationScriptAsset(input: {
   | { ok: false; code: string; message: string; status: number }
 > {
   const db = await getDb({ generatedImages, stories, storyOutlines, storyboards })
+  const slotName = input.name.trim()
+  if (!slotName) return { ok: false, code: "VALIDATION_FAILED", message: "缺少素材名称", status: 400 }
 
   const storyRow = await db
     .select({ storyId: stories.id, scriptContent: storyboards.scriptContent })
@@ -57,39 +59,40 @@ export async function importVideoCreationScriptAsset(input: {
   const thumbnailUrl = (src.thumbnailUrl ?? "").trim() || null
   const thumbnailStorageKey = (src.thumbnailStorageKey ?? "").trim() || null
 
-  const assetName = typeof src.name === "string" ? src.name : input.displayName ?? input.name
+  const assetName = (typeof src.name === "string" ? src.name : input.displayName ?? input.name).trim() || slotName
   const assetDescription = typeof src.description === "string" ? src.description : ""
 
+  const candidateNames = Array.from(new Set([slotName, assetName])).filter(Boolean)
   const existed = await db
-    .select({ id: generatedImages.id })
+    .select({ id: generatedImages.id, createdAt: generatedImages.createdAt })
     .from(generatedImages)
     .where(
       and(
         eq(generatedImages.storyId, effectiveStoryId),
-        eq(generatedImages.storyboardId, input.storyboardId),
-        eq(generatedImages.name, input.name),
-        eq(generatedImages.category, input.category)
+        eq(generatedImages.category, input.category),
+        inArray(generatedImages.name, candidateNames)
       )
     )
     .orderBy(desc(generatedImages.createdAt))
-    .limit(1)
+    .limit(20)
 
-  const existing = existed[0]
+  const keepId = existed[0]?.id ?? null
   const saved =
-    existing
+    keepId
       ? (
           await db
             .update(generatedImages)
             .set({
-              name: assetName,
+              name: slotName,
               url,
               storageKey,
               thumbnailUrl,
               thumbnailStorageKey,
               description: typeof src.description === "string" ? src.description : null,
-              prompt: typeof src.prompt === "string" ? src.prompt : null
+              prompt: typeof src.prompt === "string" ? src.prompt : null,
+              storyboardId: null
             })
-            .where(eq(generatedImages.id, existing.id))
+            .where(eq(generatedImages.id, keepId))
             .returning()
         )[0]
       : (
@@ -97,8 +100,8 @@ export async function importVideoCreationScriptAsset(input: {
             .insert(generatedImages)
             .values({
               storyId: effectiveStoryId,
-              storyboardId: input.storyboardId,
-              name: assetName,
+              storyboardId: null,
+              name: slotName,
               description: typeof src.description === "string" ? src.description : null,
               url,
               storageKey,
@@ -110,14 +113,15 @@ export async function importVideoCreationScriptAsset(input: {
             .returning()
         )[0]
 
-  const renamedScript = renameEntityInScript((storyRow[0]?.scriptContent ?? buildEmptyScript()) as StoryboardScriptContent, {
+  const idsToDelete = existed.map((r) => r.id).filter((id) => id && id !== keepId)
+  if (idsToDelete.length > 0) {
+    await db.delete(generatedImages).where(inArray(generatedImages.id, idsToDelete))
+  }
+
+  const currentScript = (storyRow[0]?.scriptContent ?? buildEmptyScript()) as StoryboardScriptContent
+  const nextScript = withReferenceAsset(currentScript, {
     category: input.category,
-    from: input.name,
-    to: assetName
-  })
-  const nextScript = withReferenceAsset(renamedScript, {
-    category: input.category,
-    entityName: assetName,
+    entityName: slotName,
     assetName,
     assetDescription
   })
@@ -125,6 +129,6 @@ export async function importVideoCreationScriptAsset(input: {
 
   return {
     ok: true,
-    data: { ...(saved as any), pickedEntityName: assetName, pickedTitle: assetName, pickedDescription: assetDescription }
+    data: { ...(saved as any), pickedEntityName: slotName, pickedTitle: assetName, pickedDescription: assetDescription }
   }
 }
